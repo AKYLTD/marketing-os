@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { useTheme } from "./ThemeProvider";
 import {
   LayoutDashboard, Palette, Image, CalendarDays, Share2, Send,
-  BarChart3, Megaphone, FlaskConical, Star, Settings, Bot,
+  BarChart3, Megaphone, FlaskConical, Settings, Bot,
   ShieldCheck, LogOut, Sun, Moon, Menu, X,
 } from "lucide-react";
 import { useState } from "react";
@@ -21,7 +21,6 @@ const NAV_ITEMS = [
   { key: "analytics", label: "Analytics", icon: BarChart3, href: "/analytics" },
   { key: "campaigns", label: "Campaigns", icon: Megaphone, href: "/campaigns" },
   { key: "growth", label: "Growth Lab", icon: FlaskConical, href: "/growth" },
-  { key: "dates", label: "Special Dates", icon: Star, href: "/dates" },
   { key: "settings", label: "Settings", icon: Settings, href: "/settings" },
   { key: "agent", label: "AI Agent", icon: Bot, href: "/agent", tier: "enterprise" },
   { key: "admin", label: "Admin", icon: ShieldCheck, href: "/admin", tier: "enterprise" },
@@ -29,8 +28,8 @@ const NAV_ITEMS = [
 
 const TIER_ACCESS: Record<string, string[]> = {
   basic: ["dashboard"],
-  gold: ["dashboard","brand","media","calendar","channels","publishing","analytics","campaigns","growth","dates","settings"],
-  enterprise: ["dashboard","brand","media","calendar","channels","publishing","analytics","campaigns","growth","dates","settings","agent","admin"],
+  gold: ["dashboard","brand","media","calendar","channels","publishing","analytics","campaigns","growth","settings"],
+  enterprise: ["dashboard","brand","media","calendar","channels","publishing","analytics","campaigns","growth","settings","agent","admin"],
 };
 
 interface SidebarProps {
