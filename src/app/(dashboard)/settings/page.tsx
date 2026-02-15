@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Save,
   Eye,
@@ -38,20 +38,21 @@ const aiProviders = {
     models: [
       { value: 'gpt-4o', label: 'GPT-4o' },
       { value: 'gpt-4o-mini', label: 'GPT-4o-mini' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
     ],
   },
   anthropic: {
     label: 'Anthropic',
     models: [
-      { value: 'claude-sonnet', label: 'Claude Sonnet' },
-      { value: 'claude-opus', label: 'Claude Opus' },
+      { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+      { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
     ],
   },
   google: {
     label: 'Google',
     models: [
-      { value: 'gemini-pro', label: 'Gemini Pro' },
-      { value: 'gemini-flash', label: 'Gemini Flash' },
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
     ],
   },
   custom: {
@@ -80,9 +81,12 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
   const [aiProvider, setAiProvider] = useState<AIProvider>('anthropic');
-  const [aiModel, setAiModel] = useState('claude-sonnet');
+  const [aiModel, setAiModel] = useState('claude-sonnet-4-5');
+  const [temperature, setTemperature] = useState(0.7);
   const [customApiUrl, setCustomApiUrl] = useState('');
-
+  const [systemPrompt, setSystemPrompt] = useState('You are a helpful marketing assistant.');
+  const [apiKey, setApiKey] = useState('');
+  const [saving, setSaving] = useState(false);
   const [generalSettings, setGeneralSettings] = useState({
     businessName: "Roni's Bagel Bakery",
     industry: 'Food & Beverage',
@@ -92,6 +96,26 @@ export default function SettingsPage() {
     language: 'English',
     dateFormat: 'MM/DD/YYYY',
   });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.aiProvider) setAiProvider(data.aiProvider);
+          if (data.aiModel) setAiModel(data.aiModel);
+          if (data.temperature !== undefined) setTemperature(data.temperature);
+          if (data.systemPrompt) setSystemPrompt(data.systemPrompt);
+          if (data.customApiUrl) setCustomApiUrl(data.customApiUrl);
+          if (data.apiKey) setApiKey(data.apiKey);
+        }
+      } catch (err) {
+        console.error('Failed to fetch settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const [brandSettings, setBrandSettings] = useState({
     primaryColor: '#6B46C1',
@@ -543,6 +567,59 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t border-[var(--border)] pt-6">
+              <h3 className="section-title mb-4">API Configuration</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="form-label">API Key</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      className="form-input flex-1"
+                      placeholder="Enter your API key"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">System Prompt</label>
+                  <textarea
+                    className="form-input"
+                    placeholder="Define the AI system prompt behavior..."
+                    rows={4}
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-2">
+                    <label className="text-sm font-medium text-[var(--text)]">
+                      Temperature
+                    </label>
+                    <span className="text-sm text-[var(--accent)] font-semibold">
+                      {temperature.toFixed(2)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={temperature}
+                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-[var(--text3)] mt-1">
+                    <span>Deterministic</span>
+                    <span>Creative</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-[var(--border)] pt-6">
               <h3 className="section-title mb-4">AI Capabilities</h3>
               <div className="space-y-3">
                 {[
@@ -614,44 +691,63 @@ export default function SettingsPage() {
             </div>
 
             <div className="border-t border-[var(--border)] pt-6 mt-6">
-              <h3 className="section-title mb-4">API Keys</h3>
+              <h3 className="section-title mb-4">AI Capabilities</h3>
               <div className="space-y-3">
                 {[
-                  { key: 'openai', label: 'OpenAI API Key' },
-                  { key: 'anthropic', label: 'Anthropic API Key' },
-                  { key: 'custom', label: 'Custom API Key' },
+                  { key: 'contentGeneration', label: 'Content Generation' },
+                  { key: 'autoScheduling', label: 'Auto-scheduling' },
+                  { key: 'sentimentAnalysis', label: 'Sentiment Analysis' },
+                  { key: 'competitorMonitoring', label: 'Competitor Monitoring' },
+                  { key: 'campaignOptimization', label: 'Campaign Optimization' },
+                  { key: 'smartReplies', label: 'Smart Replies' },
                 ].map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="form-label">{label}</label>
-                    <div className="flex gap-2">
-                      <input
-                        type={
-                          showApiKey[key] ? 'text' : 'password'
-                        }
-                        className="form-input flex-1"
-                        value={apiKeys[key as keyof typeof apiKeys]}
-                        readOnly
-                      />
-                      <button
-                        onClick={() => toggleApiKeyVisibility(key)}
-                        className="btn btn-secondary"
-                      >
-                        {showApiKey[key] ? (
-                          <EyeOff size={18} />
-                        ) : (
-                          <Eye size={18} />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  <label
+                    key={key}
+                    className="flex items-center gap-3 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-[var(--text)]">{label}</span>
+                  </label>
                 ))}
               </div>
             </div>
           </div>
 
-          <button className="btn btn-primary">
+          <button
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const response = await fetch('/api/settings', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    aiProvider,
+                    aiModel,
+                    temperature,
+                    systemPrompt,
+                    customApiUrl,
+                    apiKey,
+                  }),
+                });
+                if (response.ok) {
+                  alert('Settings saved successfully!');
+                }
+              } catch (err) {
+                console.error('Failed to save settings:', err);
+                alert('Failed to save settings');
+              } finally {
+                setSaving(false);
+              }
+            }}
+            disabled={saving}
+            className="btn btn-primary"
+          >
             <Save size={18} />
-            Save Settings
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       )}

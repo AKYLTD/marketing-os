@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Pause, Play, BarChart3, Trash2, X, Calendar } from 'lucide-react';
 
 interface Campaign {
@@ -19,84 +19,14 @@ interface Campaign {
   progress: number;
 }
 
-const SAMPLE_CAMPAIGNS: Campaign[] = [
-  {
-    id: '1',
-    name: "Valentine's Day Special",
-    status: 'active',
-    startDate: 'Feb 6',
-    endDate: 'Feb 20',
-    channels: ['Instagram', 'TikTok', 'Facebook'],
-    budget: 2000,
-    spent: 1300,
-    impressions: 48250,
-    clicks: 3402,
-    conversions: 287,
-    roi: 156,
-    progress: 65,
-  },
-  {
-    id: '2',
-    name: 'Spring Menu Launch',
-    status: 'planned',
-    startDate: 'Mar 1',
-    endDate: 'Mar 15',
-    channels: ['Instagram', 'Facebook', 'Email'],
-    budget: 1500,
-    spent: 0,
-    progress: 0,
-  },
-  {
-    id: '3',
-    name: 'Weekend Brunch Push',
-    status: 'active',
-    startDate: 'Feb 1',
-    endDate: 'Mar 31',
-    channels: ['TikTok', 'Instagram'],
-    budget: 800,
-    spent: 320,
-    impressions: 22100,
-    clicks: 1840,
-    conversions: 142,
-    roi: 89,
-    progress: 40,
-  },
-  {
-    id: '4',
-    name: 'Loyalty Program Launch',
-    status: 'draft',
-    startDate: 'Apr 1',
-    endDate: 'Apr 30',
-    channels: [
-      'Instagram',
-      'TikTok',
-      'Facebook',
-      'LinkedIn',
-      'Email',
-    ],
-    budget: 3000,
-    spent: 0,
-    progress: 0,
-  },
-  {
-    id: '5',
-    name: 'Easter Campaign',
-    status: 'planned',
-    startDate: 'Apr 14',
-    endDate: 'Apr 21',
-    channels: ['Instagram', 'Facebook'],
-    budget: 1200,
-    spent: 0,
-    progress: 0,
-  },
-];
-
 function CreateCampaignModal({
   isOpen,
   onClose,
+  onCreate,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onCreate: (data: any) => void;
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -107,6 +37,7 @@ function CreateCampaignModal({
     budget: '',
     description: '',
   });
+  const [submitting, setSubmitting] = useState(false);
 
   const channelOptions = [
     'Instagram',
@@ -123,6 +54,25 @@ function CreateCampaignModal({
         ? prev.channels.filter((c) => c !== channel)
         : [...prev.channels, channel],
     }));
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await onCreate(formData);
+      setFormData({
+        name: '',
+        objective: 'awareness',
+        channels: [],
+        startDate: '',
+        endDate: '',
+        budget: '',
+        description: '',
+      });
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -246,11 +196,11 @@ function CreateCampaignModal({
         </div>
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="btn btn-secondary">
+          <button onClick={onClose} className="btn btn-secondary" disabled={submitting}>
             Cancel
           </button>
-          <button onClick={onClose} className="btn btn-primary">
-            Create Campaign
+          <button onClick={handleSubmit} className="btn btn-primary" disabled={submitting}>
+            {submitting ? 'Creating...' : 'Create Campaign'}
           </button>
         </div>
       </div>
@@ -258,7 +208,7 @@ function CreateCampaignModal({
   );
 }
 
-function CampaignCard({ campaign }: { campaign: Campaign }) {
+function CampaignCard({ campaign, onDelete }: { campaign: Campaign; onDelete: () => void }) {
   const statusConfigs = {
     active: { color: 'tag-green', label: 'Active' },
     planned: { color: 'tag-blue', label: 'Planned' },
@@ -378,14 +328,88 @@ function CampaignCard({ campaign }: { campaign: Campaign }) {
             Resume
           </button>
         )}
+        <button
+          onClick={onDelete}
+          className="flex-1 btn btn-sm text-[var(--red)] border border-[var(--red)]"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
 }
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>(SAMPLE_CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/campaigns');
+      if (res.ok) {
+        setCampaigns(await res.json());
+        setError(null);
+      } else {
+        setError('Failed to fetch campaigns');
+      }
+    } catch (e) {
+      console.error(e);
+      setError('Error fetching campaigns');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
+
+  const handleCreateCampaign = async (formData: any) => {
+    try {
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (res.ok) {
+        await fetchCampaigns();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteCampaign = async (id: string) => {
+    try {
+      const res = await fetch(`/api/campaigns/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setCampaigns(campaigns.filter((c) => c.id !== id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="page-title">Campaigns</h1>
+            <p className="page-subtitle">Plan, launch, and track your marketing campaigns</p>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-[var(--text2)]">Loading campaigns...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -405,15 +429,33 @@ export default function CampaignsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {campaigns.map((campaign) => (
-          <CampaignCard key={campaign.id} campaign={campaign} />
-        ))}
-      </div>
+      {error && (
+        <div className="card bg-[var(--red)]/10 border border-[var(--red)]/20">
+          <p className="text-[var(--red)]">{error}</p>
+        </div>
+      )}
+
+      {campaigns.length === 0 ? (
+        <div className="card text-center py-12">
+          <p className="text-[var(--text2)]">No campaigns yet.</p>
+          <p className="text-sm text-[var(--text2)] mt-2">Click "Create Campaign" to get started.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {campaigns.map((campaign) => (
+            <CampaignCard
+              key={campaign.id}
+              campaign={campaign}
+              onDelete={() => handleDeleteCampaign(campaign.id)}
+            />
+          ))}
+        </div>
+      )}
 
       <CreateCampaignModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onCreate={handleCreateCampaign}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Lock,
@@ -441,6 +441,10 @@ export default function AdminPage() {
   const [crmFilter, setCRMFilter] = useState<CRMFilter>('All');
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expandedContact, setExpandedContact] = useState<string | null>(null);
+  const [crmContacts, setCrmContacts] = useState<CRMContactDetail[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // CRM Modal states
   const [showAddContactModal, setShowAddContactModal] = useState(false);
@@ -460,6 +464,49 @@ export default function AdminPage() {
   const [contactNoteForm, setContactNoteForm] = useState<{ [key: string]: { text: string; saving: boolean } }>({});
   const [contactCallForm, setContactCallForm] = useState<{ [key: string]: { notes: string; outcome: string; saving: boolean } }>({});
   const [contactFollowupForm, setContactFollowupForm] = useState<{ [key: string]: { date: string; reason: string; saving: boolean } }>({});
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [contactsRes, usersRes, vouchersRes] = await Promise.all([
+          fetch('/api/contacts'),
+          fetch('/api/admin/users'),
+          fetch('/api/vouchers'),
+        ]);
+
+        if (contactsRes.ok) {
+          const contactsData = await contactsRes.json();
+          setCrmContacts(contactsData.contacts || mockCRMContacts);
+        } else {
+          setCrmContacts(mockCRMContacts);
+        }
+
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          setUsers(usersData.users || mockUsers);
+        } else {
+          setUsers(mockUsers);
+        }
+
+        if (vouchersRes.ok) {
+          const vouchersData = await vouchersRes.json();
+          setVouchers(vouchersData.vouchers || mockVouchers);
+        } else {
+          setVouchers(mockVouchers);
+        }
+      } catch (err) {
+        console.error('Failed to fetch admin data:', err);
+        setCrmContacts(mockCRMContacts);
+        setUsers(mockUsers);
+        setVouchers(mockVouchers);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Voucher Modal states
   const [showCreateVoucherModal, setShowCreateVoucherModal] = useState(false);
@@ -530,11 +577,11 @@ export default function AdminPage() {
     setVoucherForm({ ...voucherForm, code: `${code}${num}` });
   };
 
-  const filteredUsers = mockUsers.filter((user) =>
+  const filteredUsers = users.filter((user) =>
     userFilter === 'All' ? true : user.tier === userFilter
   );
 
-  const filteredContacts = mockCRMContacts.filter((contact) =>
+  const filteredContacts = crmContacts.filter((contact) =>
     crmFilter === 'All' ? true : contact.status === crmFilter
   );
 
@@ -771,14 +818,14 @@ export default function AdminPage() {
             {expandedUser && (
               <div className="mt-4 p-4 bg-[var(--bg2)] rounded-lg">
                 <p className="text-sm font-medium text-[var(--text)] mb-2">
-                  User Details: {mockUsers.find((u) => u.id === expandedUser)?.name}
+                  User Details: {users.find((u) => u.id === expandedUser)?.name}
                 </p>
                 <div className="grid grid-cols-2 gap-3 text-xs text-[var(--text2)]">
                   <div>
-                    <p>Last Active: {mockUsers.find((u) => u.id === expandedUser)?.lastActive}</p>
+                    <p>Last Active: {users.find((u) => u.id === expandedUser)?.lastActive}</p>
                   </div>
                   <div>
-                    <p>Member Since: {mockUsers.find((u) => u.id === expandedUser)?.joined}</p>
+                    <p>Member Since: {users.find((u) => u.id === expandedUser)?.joined}</p>
                   </div>
                 </div>
               </div>
@@ -899,10 +946,10 @@ export default function AdminPage() {
           {/* Pipeline Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: 'Leads', count: mockCRMContacts.filter(c => c.status === 'Lead').length, color: 'tag-blue' },
-              { label: 'Active', count: mockCRMContacts.filter(c => c.status === 'Active').length, color: 'tag-green' },
-              { label: 'At Risk', count: mockCRMContacts.filter(c => c.status === 'At Risk').length, color: 'tag-amber' },
-              { label: 'Churned', count: mockCRMContacts.filter(c => c.status === 'Churned').length, color: 'tag-red' },
+              { label: 'Leads', count: crmContacts.filter(c => c.status === 'Lead').length, color: 'tag-blue' },
+              { label: 'Active', count: crmContacts.filter(c => c.status === 'Active').length, color: 'tag-green' },
+              { label: 'At Risk', count: crmContacts.filter(c => c.status === 'At Risk').length, color: 'tag-amber' },
+              { label: 'Churned', count: crmContacts.filter(c => c.status === 'Churned').length, color: 'tag-red' },
             ].map((stage, idx) => (
               <div key={idx} className="card">
                 <p className="text-xs text-[var(--text2)] mb-2">{stage.label}</p>
@@ -928,7 +975,10 @@ export default function AdminPage() {
                   <option>Churned</option>
                 </select>
               </div>
-              <button onClick={() => setShowAddContactModal(true)} className="btn btn-primary">
+              <button
+                onClick={() => setShowAddContactModal(true)}
+                className="btn btn-primary"
+              >
                 <Plus size={18} />
                 Add Contact
               </button>
@@ -999,7 +1049,7 @@ export default function AdminPage() {
             {expandedContactDetail && (
               <div className="mt-6 p-6 bg-[var(--bg2)] rounded-lg">
                 {(() => {
-                  const contact = mockCRMContacts.find((c) => c.id === expandedContactDetail);
+                  const contact = crmContacts.find((c) => c.id === expandedContactDetail);
                   if (!contact) return null;
 
                   return (
@@ -1125,7 +1175,34 @@ export default function AdminPage() {
                               }}
                               className="form-input w-full text-sm h-24"
                             />
-                            <button className="btn btn-primary btn-sm">Send</button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const key = `email-${contact.id}`;
+                                  const response = await fetch('/api/contacts/activities', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      contactId: contact.id,
+                                      type: 'email',
+                                      action: 'Email sent',
+                                      details: contactEmailForm[key]?.message,
+                                    }),
+                                  });
+                                  if (response.ok) {
+                                    setContactEmailForm({
+                                      ...contactEmailForm,
+                                      [key]: { ...contactEmailForm[key], composing: false, subject: '', message: '' }
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to send email:', err);
+                                }
+                              }}
+                              className="btn btn-primary btn-sm"
+                            >
+                              Send
+                            </button>
                           </div>
                         )}
 
@@ -1144,7 +1221,34 @@ export default function AdminPage() {
                               }}
                               className="form-input w-full text-sm h-20"
                             />
-                            <button className="btn btn-primary btn-sm">Save Note</button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const key = `note-${contact.id}`;
+                                  const response = await fetch('/api/contacts/activities', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      contactId: contact.id,
+                                      type: 'note',
+                                      action: 'Note added',
+                                      details: contactNoteForm[key]?.text,
+                                    }),
+                                  });
+                                  if (response.ok) {
+                                    setContactNoteForm({
+                                      ...contactNoteForm,
+                                      [key]: { ...contactNoteForm[key], saving: false, text: '' }
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to save note:', err);
+                                }
+                              }}
+                              className="btn btn-primary btn-sm"
+                            >
+                              Save Note
+                            </button>
                           </div>
                         )}
 
@@ -1176,7 +1280,34 @@ export default function AdminPage() {
                               }}
                               className="form-input w-full text-sm"
                             />
-                            <button className="btn btn-primary btn-sm">Schedule</button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const key = `followup-${contact.id}`;
+                                  const response = await fetch('/api/contacts/activities', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      contactId: contact.id,
+                                      type: 'status_change',
+                                      action: 'Follow-up scheduled',
+                                      details: contactFollowupForm[key]?.reason,
+                                    }),
+                                  });
+                                  if (response.ok) {
+                                    setContactFollowupForm({
+                                      ...contactFollowupForm,
+                                      [key]: { ...contactFollowupForm[key], saving: false, date: '', reason: '' }
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to schedule follow-up:', err);
+                                }
+                              }}
+                              className="btn btn-primary btn-sm"
+                            >
+                              Schedule
+                            </button>
                           </div>
                         )}
 
@@ -1210,7 +1341,34 @@ export default function AdminPage() {
                               <option>Voicemail</option>
                               <option>No Answer</option>
                             </select>
-                            <button className="btn btn-primary btn-sm">Log Call</button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const key = `call-${contact.id}`;
+                                  const response = await fetch('/api/contacts/activities', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      contactId: contact.id,
+                                      type: 'call',
+                                      action: `Call logged - ${contactCallForm[key]?.outcome}`,
+                                      details: contactCallForm[key]?.notes,
+                                    }),
+                                  });
+                                  if (response.ok) {
+                                    setContactCallForm({
+                                      ...contactCallForm,
+                                      [key]: { ...contactCallForm[key], saving: false, notes: '', outcome: 'Connected' }
+                                    });
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to log call:', err);
+                                }
+                              }}
+                              className="btn btn-primary btn-sm"
+                            >
+                              Log Call
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1348,10 +1506,26 @@ export default function AdminPage() {
               <button onClick={() => setShowAddContactModal(false)} className="btn btn-secondary flex-1">
                 Cancel
               </button>
-              <button onClick={() => {
-                setShowAddContactModal(false);
-                setNewContactForm({ name: '', company: '', email: '', phone: '', status: 'Lead', value: '', notes: '' });
-              }} className="btn btn-primary flex-1">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/contacts', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(newContactForm),
+                    });
+                    if (response.ok) {
+                      const newContact = await response.json();
+                      setCrmContacts([...crmContacts, newContact]);
+                      setShowAddContactModal(false);
+                      setNewContactForm({ name: '', company: '', email: '', phone: '', status: 'Lead', value: '', notes: '' });
+                    }
+                  } catch (err) {
+                    console.error('Failed to add contact:', err);
+                  }
+                }}
+                className="btn btn-primary flex-1"
+              >
                 Add Contact
               </button>
             </div>
@@ -1476,7 +1650,7 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockVouchers.map((voucher) => (
+                  {vouchers.map((voucher) => (
                     <React.Fragment key={voucher.id}>
                       <tr
                         className="border-b border-[var(--border)] hover:bg-[var(--bg2)] cursor-pointer"
@@ -1507,9 +1681,23 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3">
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              // Toggle button functionality
+                              try {
+                                const response = await fetch(`/api/vouchers/${voucher.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ active: !voucher.active }),
+                                });
+                                if (response.ok) {
+                                  const updated = vouchers.map((v) =>
+                                    v.id === voucher.id ? { ...v, active: !v.active } : v
+                                  );
+                                  setVouchers(updated);
+                                }
+                              } catch (err) {
+                                console.error('Failed to toggle voucher:', err);
+                              }
                             }}
                             className={`tag ${voucher.active ? 'tag-green' : 'tag-red'} cursor-pointer`}
                           >
@@ -1518,10 +1706,22 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button className="btn btn-secondary btn-sm">
-                              <Edit size={14} />
-                            </button>
-                            <button className="btn btn-secondary btn-sm">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  const response = await fetch(`/api/vouchers/${voucher.id}`, {
+                                    method: 'DELETE',
+                                  });
+                                  if (response.ok) {
+                                    setVouchers(vouchers.filter((v) => v.id !== voucher.id));
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to delete voucher:', err);
+                                }
+                              }}
+                              className="btn btn-secondary btn-sm"
+                            >
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -1556,7 +1756,28 @@ export default function AdminPage() {
                                     placeholder="user@example.com, user2@example.com"
                                     className="form-input flex-1 text-sm"
                                   />
-                                  <button className="btn btn-secondary btn-sm">Send</button>
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(`/api/vouchers/send`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({
+                                            voucherId: voucher.id,
+                                            code: voucher.code,
+                                          }),
+                                        });
+                                        if (response.ok) {
+                                          alert('Voucher sent successfully!');
+                                        }
+                                      } catch (err) {
+                                        console.error('Failed to send voucher:', err);
+                                      }
+                                    }}
+                                    className="btn btn-secondary btn-sm"
+                                  >
+                                    Send
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -1696,10 +1917,26 @@ export default function AdminPage() {
               <button onClick={() => setShowCreateVoucherModal(false)} className="btn btn-secondary flex-1">
                 Cancel
               </button>
-              <button onClick={() => {
-                setShowCreateVoucherModal(false);
-                setVoucherForm({ code: '', discount: '', maxUses: '', expiryDate: '', sendTo: 'all', tier: 'Basic', emails: '' });
-              }} className="btn btn-primary flex-1">
+              <button
+                onClick={async () => {
+                  try {
+                    const response = await fetch('/api/vouchers', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(voucherForm),
+                    });
+                    if (response.ok) {
+                      const newVoucher = await response.json();
+                      setVouchers([...vouchers, newVoucher]);
+                      setShowCreateVoucherModal(false);
+                      setVoucherForm({ code: '', discount: '', maxUses: '', expiryDate: '', sendTo: 'all', tier: 'Basic', emails: '' });
+                    }
+                  } catch (err) {
+                    console.error('Failed to create voucher:', err);
+                  }
+                }}
+                className="btn btn-primary flex-1"
+              >
                 Create & Send
               </button>
             </div>

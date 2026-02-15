@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { db } from "./db";
+import { database, schema, eq } from "./db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
@@ -27,16 +27,24 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const password = credentials.password as string;
 
         // Find or create user (demo mode: any credentials work)
-        let user = db.user.findByEmail(email);
+        let user = await database
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.email, email))
+          .then((r) => r[0] || null);
 
         if (!user) {
           // Auto-create for demo — in production, use proper password hashing
-          user = db.user.create({
-            email,
-            name: email.split("@")[0],
-            password, // TODO: hash with bcrypt in production
-            tier: "enterprise", // Demo default
-          });
+          user = await database
+            .insert(schema.users)
+            .values({
+              email,
+              name: email.split("@")[0],
+              password, // TODO: hash with bcrypt in production
+              tier: "enterprise", // Demo default
+            })
+            .returning()
+            .then((r) => r[0]);
         }
 
         return {
@@ -53,23 +61,37 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
       }
-      // For Google OAuth sign-in, create/find the user in our in-memory store
+      // For Google OAuth sign-in, create/find the user in our database
       if (account?.provider === "google" && user?.email) {
-        let dbUser = db.user.findByEmail(user.email);
+        let dbUser = await database
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.email, user.email))
+          .then((r) => r[0] || null);
+
         if (!dbUser) {
-          dbUser = db.user.create({
-            email: user.email,
-            name: user.name || null,
-            image: user.image || null,
-            tier: "enterprise", // Demo default
-          });
+          dbUser = await database
+            .insert(schema.users)
+            .values({
+              email: user.email,
+              name: user.name || undefined,
+              image: user.image || undefined,
+              tier: "enterprise", // Demo default
+            })
+            .returning()
+            .then((r) => r[0]);
         }
         token.id = dbUser.id;
         token.tier = dbUser.tier;
       }
       // Fetch tier from DB on each token refresh
       if (token.id) {
-        const dbUser = db.user.findById(token.id as string);
+        const dbUser = await database
+          .select()
+          .from(schema.users)
+          .where(eq(schema.users.id, token.id as string))
+          .then((r) => r[0] || null);
+
         if (dbUser) {
           token.tier = dbUser.tier;
           if (dbUser.name) token.name = dbUser.name;

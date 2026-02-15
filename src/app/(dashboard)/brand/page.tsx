@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 
 interface BrandState {
@@ -33,47 +33,93 @@ interface BrandState {
   usp: string[];
 }
 
-const initialState: BrandState = {
-  businessName: "Roni's Bagel Bakery",
+const emptyState: BrandState = {
+  businessName: '',
   industry: 'Food & Beverage',
-  foundedYear: 2019,
-  location: 'London, UK',
-  website: 'www.ronisbagels.co.uk',
-  maturity: 60,
-  direction: 20,
-  ageRanges: ['25-34', '35-44'],
-  genderMale: 45,
-  incomeLevel: 'Premium',
-  interests: ['Coffee', 'Artisan', 'Local', 'Sustainability'],
+  foundedYear: new Date().getFullYear(),
+  location: '',
+  website: '',
+  maturity: 50,
+  direction: 50,
+  ageRanges: [],
+  genderMale: 50,
+  incomeLevel: 'Mid-range',
+  interests: [],
   interestInput: '',
-  playfulProfessional: 30,
-  boldSubtle: 15,
-  modernClassic: 25,
-  friendlyAuthoritative: 40,
-  innovativeTraditional: 10,
-  formality: 7,
-  humor: 6,
-  enthusiasm: 7,
+  playfulProfessional: 0,
+  boldSubtle: 0,
+  modernClassic: 0,
+  friendlyAuthoritative: 0,
+  innovativeTraditional: 0,
+  formality: 5,
+  humor: 5,
+  enthusiasm: 5,
   emojiUsage: 'Minimal',
-  primaryColor: '#D4A574',
+  primaryColor: '#000000',
   secondaryColor: '#FFFFFF',
-  accentColor: '#8B4513',
-  brandStory:
-    'Roni\'s Bagel Bakery brings authentic, handcrafted bagels to London. We source premium ingredients locally and bake fresh daily, celebrating the bagel tradition with a modern twist.',
-  competitors: [
-    { name: 'Beigel Bake', url: 'www.beigelbake.co.uk' },
-    { name: 'Brick Lane Bagel', url: 'www.bricklanebagels.com' },
-    { name: 'The Bagel House', url: 'www.thebagelhouse.co.uk' },
-  ],
-  usp: [
-    'Handcrafted using traditional recipes',
-    'Locally sourced, sustainable ingredients',
-    'Same-day artisan production',
-  ],
+  accentColor: '#0066cc',
+  brandStory: '',
+  competitors: [],
+  usp: [],
 };
 
 export default function BrandPage() {
-  const [state, setState] = useState<BrandState>(initialState);
+  const [state, setState] = useState<BrandState>(emptyState);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasData, setHasData] = useState(false);
+
+  // Fetch brand data on mount
+  useEffect(() => {
+    const fetchBrandData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/brand');
+
+        if (response.ok) {
+          const data = await response.json();
+          setState(data);
+          setHasData(true);
+        } else if (response.status === 404) {
+          // No brand profile exists yet
+          setState(emptyState);
+          setHasData(false);
+        } else {
+          throw new Error('Failed to fetch brand data');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load brand data');
+        setState(emptyState);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBrandData();
+  }, []);
+
+  const saveBrandData = useCallback(async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      const response = await fetch('/api/brand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save brand data');
+      }
+
+      setHasData(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save brand data');
+    } finally {
+      setSaving(false);
+    }
+  }, [state]);
 
   const handleInputChange = (field: keyof BrandState, value: any) => {
     setState((prev) => ({ ...prev, [field]: value }));
@@ -136,6 +182,26 @@ export default function BrandPage() {
     { left: 'Innovative', right: 'Traditional', value: state.innovativeTraditional },
   ];
 
+  if (loading) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+        <div className="border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <h1 className="page-title">Brand DNA Profile</h1>
+            <p className="page-subtitle">
+              Define your brand identity for AI-powered content that matches your voice perfectly
+            </p>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center h-64">
+            <p style={{ color: 'var(--text2)' }}>Loading your brand profile...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       {/* Header */}
@@ -150,6 +216,19 @@ export default function BrandPage() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {error && (
+          <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }} className="border">
+            {error}
+          </div>
+        )}
+
+        {!hasData && !loading && (
+          <div className="mb-8 p-6 rounded-lg border text-center" style={{ backgroundColor: 'var(--bg2)', borderColor: 'var(--border)', color: 'var(--text2)' }}>
+            <p className="text-sm mb-4">Setting up your brand profile...</p>
+            <p className="text-xs">Start by filling in your business information below</p>
+          </div>
+        )}
+
         {/* Brand Sliders */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Brand Stage */}
@@ -616,7 +695,13 @@ export default function BrandPage() {
 
         {/* Save Button */}
         <div className="flex justify-end mb-12">
-          <button className="btn btn-primary">Save Profile</button>
+          <button
+            onClick={saveBrandData}
+            disabled={saving}
+            className="btn btn-primary"
+          >
+            {saving ? 'Saving...' : 'Save Profile'}
+          </button>
         </div>
       </div>
     </div>

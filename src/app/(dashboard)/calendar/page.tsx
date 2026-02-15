@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
 interface Post {
-  id: number;
+  id: string;
   title: string;
   channel: 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn';
   time: string;
@@ -18,52 +18,47 @@ interface SpecialDate {
   description: string;
 }
 
-const specialDates: Record<number, SpecialDate> = {
-  9: { date: 9, emoji: '🥯', name: 'National Bagel Day', description: 'Celebrate the perfect bagel!' },
-  14: { date: 14, emoji: '💝', name: "Valentine's Day", description: 'Share love and delicious bagels' },
-  17: { date: 17, emoji: '🍀', name: "St Patrick's Day", description: 'Lucky bagel colors available' },
-  30: { date: 30, emoji: '💐', name: "Mother's Day", description: 'Treat the special women in your life' },
-};
-
-const postsData: Record<string, Post[]> = {
-  '2026-02-06': [
-    { id: 1, title: 'Weekend Breakfast Goals', channel: 'Instagram', time: '09:00 AM', status: 'Published' },
-  ],
-  '2026-02-08': [
-    { id: 2, title: 'TikTok Bagel Hack', channel: 'TikTok', time: '02:00 PM', status: 'Published' },
-  ],
-  '2026-02-10': [
-    { id: 3, title: 'Community Spotlight', channel: 'Facebook', time: '10:30 AM', status: 'Published' },
-  ],
-  '2026-02-13': [
-    { id: 4, title: 'Valentine Promo Post', channel: 'Instagram', time: '08:00 AM', status: 'Scheduled' },
-    { id: 5, title: 'LinkedIn Article', channel: 'LinkedIn', time: '10:00 AM', status: 'Scheduled' },
-  ],
-  '2026-02-14': [
-    { id: 6, title: 'Love & Bagels Campaign', channel: 'Instagram', time: '06:00 AM', status: 'Scheduled' },
-    { id: 7, title: 'Valentine Gift Guide', channel: 'TikTok', time: '12:00 PM', status: 'Scheduled' },
-  ],
-  '2026-02-16': [
-    { id: 8, title: 'Artisan Spotlight', channel: 'Facebook', time: '03:00 PM', status: 'Scheduled' },
-  ],
-  '2026-02-20': [
-    { id: 9, title: 'Weekly Bagel Drop', channel: 'Instagram', time: '07:00 AM', status: 'Draft' },
-  ],
-  '2026-02-22': [
-    { id: 10, title: 'Behind The Scenes', channel: 'TikTok', time: '11:00 AM', status: 'Scheduled' },
-  ],
-  '2026-03-04': [
-    { id: 11, title: 'Pancake Day Twist', channel: 'Instagram', time: '09:00 AM', status: 'Scheduled' },
-  ],
-  '2026-03-17': [
-    { id: 12, title: 'Lucky Green Bagels', channel: 'Instagram', time: '08:00 AM', status: 'Draft' },
-    { id: 13, title: 'St Patrick Celebration', channel: 'TikTok', time: '01:00 PM', status: 'Draft' },
-  ],
-};
-
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1)); // February 2026
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
+  const [postsData, setPostsData] = useState<Record<string, Post[]>>({});
+  const [specialDates, setSpecialDates] = useState<Record<number, SpecialDate>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showNewEventModal, setShowNewEventModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    channel: 'Instagram' as const,
+    status: 'Scheduled' as const,
+    time: '09:00 AM',
+  });
+
+  // Fetch calendar data on mount and when month changes
+  useEffect(() => {
+    const fetchCalendarData = async () => {
+      try {
+        setLoading(true);
+        const month = currentMonth.getMonth() + 1;
+        const year = currentMonth.getFullYear();
+
+        const response = await fetch(`/api/calendar?month=${month}&year=${year}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setPostsData(data.posts || {});
+          setSpecialDates(data.specialDates || {});
+        } else {
+          throw new Error('Failed to fetch calendar data');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load calendar data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCalendarData();
+  }, [currentMonth]);
 
   const daysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -113,6 +108,45 @@ export default function CalendarPage() {
     return postsData[dateStr] || [];
   };
 
+  const handleCreateEvent = async () => {
+    if (!selectedDate || !newEvent.title.trim()) {
+      setError('Please select a date and enter a title');
+      return;
+    }
+
+    try {
+      const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(selectedDate).padStart(2, '0')}`;
+
+      const response = await fetch('/api/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newEvent,
+          date: dateStr,
+        }),
+      });
+
+      if (response.ok) {
+        const createdPost = await response.json();
+        setPostsData(prev => ({
+          ...prev,
+          [dateStr]: [...(prev[dateStr] || []), createdPost],
+        }));
+        setShowNewEventModal(false);
+        setNewEvent({
+          title: '',
+          channel: 'Instagram',
+          status: 'Scheduled',
+          time: '09:00 AM',
+        });
+      } else {
+        setError('Failed to create event');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create event');
+    }
+  };
+
   const selectedPosts = selectedDate ? getPostsForDay(selectedDate) : [];
   const selectedSpecialDate = selectedDate ? specialDates[selectedDate] : null;
 
@@ -138,6 +172,24 @@ export default function CalendarPage() {
     );
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+        <div className="border-b" style={{ borderColor: 'var(--border)' }}>
+          <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+            <h1 className="page-title">Content Calendar</h1>
+            <p className="page-subtitle">Plan, schedule, and track your content across all channels</p>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center h-64">
+            <p style={{ color: 'var(--text2)' }}>Loading calendar...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       {/* Header */}
@@ -150,6 +202,12 @@ export default function CalendarPage() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {error && (
+          <div className="mb-6 p-4 rounded-lg border" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }}>
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Calendar */}
           <div className="lg:col-span-2 card p-6">
@@ -326,13 +384,106 @@ export default function CalendarPage() {
               </p>
             )}
 
-            <button className="btn btn-secondary btn-sm w-full flex items-center justify-center gap-2">
+            <button
+              onClick={() => {
+                if (!selectedDate) {
+                  setError('Please select a date first');
+                  return;
+                }
+                setShowNewEventModal(true);
+              }}
+              className="btn btn-secondary btn-sm w-full flex items-center justify-center gap-2"
+            >
               <Plus size={16} />
               Add Post
             </button>
           </div>
         </div>
       </div>
+
+      {/* New Event Modal */}
+      {showNewEventModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowNewEventModal(false)}
+        >
+          <div
+            className="card max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <h2 className="section-title mb-4">
+                Add Event for {currentMonth.toLocaleString('default', { month: 'short' })} {selectedDate}
+              </h2>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="form-label">Title</label>
+                  <input
+                    type="text"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                    className="form-input"
+                    placeholder="Post title"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Channel</label>
+                  <select
+                    value={newEvent.channel}
+                    onChange={(e) => setNewEvent({ ...newEvent, channel: e.target.value as any })}
+                    className="form-input"
+                  >
+                    <option>Instagram</option>
+                    <option>TikTok</option>
+                    <option>Facebook</option>
+                    <option>LinkedIn</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label">Time</label>
+                  <input
+                    type="time"
+                    value={newEvent.time.replace(' AM', '').replace(' PM', '')}
+                    onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Status</label>
+                  <select
+                    value={newEvent.status}
+                    onChange={(e) => setNewEvent({ ...newEvent, status: e.target.value as any })}
+                    className="form-input"
+                  >
+                    <option>Draft</option>
+                    <option>Scheduled</option>
+                    <option>Published</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowNewEventModal(false)}
+                  className="btn btn-secondary flex-1"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateEvent}
+                  className="btn btn-primary flex-1"
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

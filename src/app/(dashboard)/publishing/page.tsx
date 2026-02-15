@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Eye,
@@ -30,132 +30,6 @@ interface Metric {
   value: number;
   icon: React.ReactNode;
 }
-
-const METRICS: Metric[] = [
-  {
-    label: 'Queued',
-    value: 8,
-    icon: <Clock className="h-5 w-5" />,
-  },
-  {
-    label: 'Published This Week',
-    value: 12,
-    icon: <CheckCircle className="h-5 w-5" />,
-  },
-  {
-    label: 'In Review',
-    value: 3,
-    icon: <AlertCircle className="h-5 w-5" />,
-  },
-  {
-    label: 'Scheduled',
-    value: 5,
-    icon: <Calendar className="h-5 w-5" />,
-  },
-];
-
-const SAMPLE_POSTS: Post[] = [
-  {
-    id: '1',
-    title: 'Valentine\'s Day Special Bagel Bundle',
-    channel: 'Instagram',
-    channelColor: '#E1306C',
-    scheduledDate: '2026-02-14',
-    scheduledTime: '10:00 AM',
-    status: 'scheduled',
-    thumbnail: '#E1306C',
-  },
-  {
-    id: '2',
-    title: 'TikTok: Bagel Making Process',
-    channel: 'TikTok',
-    channelColor: '#000000',
-    scheduledDate: '2026-02-15',
-    scheduledTime: '6:00 PM',
-    status: 'queued',
-    thumbnail: '#000000',
-  },
-  {
-    id: '3',
-    title: 'Facebook: Weekend Brunch Special',
-    channel: 'Facebook',
-    channelColor: '#1877F2',
-    scheduledDate: '2026-02-16',
-    scheduledTime: '2:00 PM',
-    status: 'scheduled',
-    thumbnail: '#1877F2',
-  },
-  {
-    id: '4',
-    title: 'LinkedIn: Fresh Ingredients Story',
-    channel: 'LinkedIn',
-    channelColor: '#0A66C2',
-    scheduledDate: '2026-02-17',
-    scheduledTime: '9:00 AM',
-    status: 'published',
-    thumbnail: '#0A66C2',
-  },
-  {
-    id: '5',
-    title: 'Instagram: Fresh Bagels Every Morning',
-    channel: 'Instagram',
-    channelColor: '#E1306C',
-    scheduledDate: '2026-02-18',
-    scheduledTime: '8:00 AM',
-    status: 'queued',
-    thumbnail: '#E1306C',
-  },
-  {
-    id: '6',
-    title: 'TikTok: Customer Testimonial Video',
-    channel: 'TikTok',
-    channelColor: '#000000',
-    scheduledDate: '2026-02-19',
-    scheduledTime: '5:00 PM',
-    status: 'queued',
-    thumbnail: '#000000',
-  },
-  {
-    id: '7',
-    title: 'Facebook: Community Event Announcement',
-    channel: 'Facebook',
-    channelColor: '#1877F2',
-    scheduledDate: '2026-02-20',
-    scheduledTime: '11:00 AM',
-    status: 'scheduled',
-    thumbnail: '#1877F2',
-  },
-  {
-    id: '8',
-    title: 'Instagram: Behind-the-Scenes Content',
-    channel: 'Instagram',
-    channelColor: '#E1306C',
-    scheduledDate: '2026-02-21',
-    scheduledTime: '7:00 PM',
-    status: 'failed',
-    thumbnail: '#E1306C',
-  },
-  {
-    id: '9',
-    title: 'LinkedIn: Industry Insights Article',
-    channel: 'LinkedIn',
-    channelColor: '#0A66C2',
-    scheduledDate: '2026-02-22',
-    scheduledTime: '10:00 AM',
-    status: 'queued',
-    thumbnail: '#0A66C2',
-  },
-  {
-    id: '10',
-    title: 'TikTok: Spring Menu Preview',
-    channel: 'TikTok',
-    channelColor: '#000000',
-    scheduledDate: '2026-02-23',
-    scheduledTime: '4:00 PM',
-    status: 'scheduled',
-    thumbnail: '#000000',
-  },
-];
 
 function MetricCard({ metric }: { metric: Metric }) {
   return (
@@ -264,11 +138,35 @@ function PreviewModal({
 }
 
 export default function PublishingPage() {
-  const [posts, setPosts] = useState<Post[]>(SAMPLE_POSTS);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filterChannel, setFilterChannel] = useState<string>('All');
   const [filterStatus, setFilterStatus] = useState<string>('All');
   const [previewPost, setPreviewPost] = useState<Post | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const fetchPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/posts');
+      if (res.ok) {
+        setPosts(await res.json());
+        setError(null);
+      } else {
+        setError('Failed to fetch posts');
+      }
+    } catch (e) {
+      console.error(e);
+      setError('Error fetching posts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   const channels = [
     'All',
@@ -312,9 +210,63 @@ export default function PublishingPage() {
     setIsPreviewOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    setPosts(posts.filter((p) => p.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/posts/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setPosts(posts.filter((p) => p.id !== id));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
+
+  const getMetrics = (): Metric[] => {
+    const queuedCount = posts.filter((p) => p.status === 'queued').length;
+    const publishedCount = posts.filter((p) => p.status === 'published').length;
+    const scheduledCount = posts.filter((p) => p.status === 'scheduled').length;
+
+    return [
+      {
+        label: 'Queued',
+        value: queuedCount,
+        icon: <Clock className="h-5 w-5" />,
+      },
+      {
+        label: 'Published This Week',
+        value: publishedCount,
+        icon: <CheckCircle className="h-5 w-5" />,
+      },
+      {
+        label: 'In Review',
+        value: 0,
+        icon: <AlertCircle className="h-5 w-5" />,
+      },
+      {
+        label: 'Scheduled',
+        value: scheduledCount,
+        icon: <Calendar className="h-5 w-5" />,
+      },
+    ];
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="page-title">Publishing Queue</h1>
+            <p className="page-subtitle">Schedule and manage your content pipeline</p>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-[var(--text2)]">Loading posts...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -331,8 +283,14 @@ export default function PublishingPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="card bg-[var(--red)]/10 border border-[var(--red)]/20">
+          <p className="text-[var(--red)]">{error}</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {METRICS.map((metric) => (
+        {getMetrics().map((metric) => (
           <MetricCard key={metric.label} metric={metric} />
         ))}
       </div>
@@ -382,128 +340,140 @@ export default function PublishingPage() {
         </div>
       </div>
 
-      <div className="hidden md:block">
-        <div className="card overflow-hidden">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: '5%' }}></th>
-                <th style={{ width: '35%' }}>Post Title</th>
-                <th style={{ width: '15%' }}>Channel</th>
-                <th style={{ width: '20%' }}>Scheduled</th>
-                <th style={{ width: '10%' }}>Status</th>
-                <th style={{ width: '15%' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPosts.map((post) => {
-                const statusTag = getStatusTag(post.status);
-                return (
-                  <tr key={post.id}>
-                    <td>
-                      <div
-                        className="h-10 w-10 rounded"
-                        style={{ backgroundColor: post.channelColor }}
-                      ></div>
-                    </td>
-                    <td className="font-medium">{post.title}</td>
-                    <td>
-                      <span className="tag tag-blue text-xs">
-                        {post.channel}
-                      </span>
-                    </td>
-                    <td className="text-sm text-[var(--text2)]">
-                      {post.scheduledDate}
-                      <br />
-                      {post.scheduledTime}
-                    </td>
-                    <td>
-                      <span className={`tag ${statusTag.color} text-xs`}>
-                        {statusTag.label}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handlePreview(post)}
-                          className="p-1 hover:bg-[var(--bg2)] rounded"
-                          title="Preview"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          className="p-1 hover:bg-[var(--bg2)] rounded"
-                          title="Edit"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(post.id)}
-                          className="p-1 hover:bg-[var(--bg2)] rounded text-[var(--red)]"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {filteredPosts.length === 0 ? (
+        <div className="card text-center py-12">
+          <p className="text-[var(--text2)]">No posts found with current filters.</p>
         </div>
-      </div>
+      ) : (
+        <div className="hidden md:block">
+          <div className="card overflow-hidden">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '5%' }}></th>
+                  <th style={{ width: '35%' }}>Post Title</th>
+                  <th style={{ width: '15%' }}>Channel</th>
+                  <th style={{ width: '20%' }}>Scheduled</th>
+                  <th style={{ width: '10%' }}>Status</th>
+                  <th style={{ width: '15%' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPosts.map((post) => {
+                  const statusTag = getStatusTag(post.status);
+                  return (
+                    <tr key={post.id}>
+                      <td>
+                        <div
+                          className="h-10 w-10 rounded"
+                          style={{ backgroundColor: post.channelColor }}
+                        ></div>
+                      </td>
+                      <td className="font-medium">{post.title}</td>
+                      <td>
+                        <span className="tag tag-blue text-xs">
+                          {post.channel}
+                        </span>
+                      </td>
+                      <td className="text-sm text-[var(--text2)]">
+                        {post.scheduledDate}
+                        <br />
+                        {post.scheduledTime}
+                      </td>
+                      <td>
+                        <span className={`tag ${statusTag.color} text-xs`}>
+                          {statusTag.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handlePreview(post)}
+                            className="p-1 hover:bg-[var(--bg2)] rounded"
+                            title="Preview"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            className="p-1 hover:bg-[var(--bg2)] rounded"
+                            title="Edit"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(post.id)}
+                            className="p-1 hover:bg-[var(--bg2)] rounded text-[var(--red)]"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-      <div className="md:hidden space-y-4">
-        {filteredPosts.map((post) => {
-          const statusTag = getStatusTag(post.status);
-          return (
-            <div key={post.id} className="card">
-              <div className="flex gap-4 mb-4">
-                <div
-                  className="h-16 w-16 rounded flex-shrink-0"
-                  style={{ backgroundColor: post.channelColor }}
-                ></div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-sm">{post.title}</h3>
-                  <p className="text-xs text-[var(--text2)] mt-1">
-                    {post.channel}
+      {filteredPosts.length === 0 ? (
+        <div className="md:hidden card text-center py-12">
+          <p className="text-[var(--text2)]">No posts found with current filters.</p>
+        </div>
+      ) : (
+        <div className="md:hidden space-y-4">
+          {filteredPosts.map((post) => {
+            const statusTag = getStatusTag(post.status);
+            return (
+              <div key={post.id} className="card">
+                <div className="flex gap-4 mb-4">
+                  <div
+                    className="h-16 w-16 rounded flex-shrink-0"
+                    style={{ backgroundColor: post.channelColor }}
+                  ></div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-sm">{post.title}</h3>
+                    <p className="text-xs text-[var(--text2)] mt-1">
+                      {post.channel}
+                    </p>
+                  </div>
+                </div>
+                <div className="mb-4 pb-4 border-b border-[var(--border)]">
+                  <p className="text-xs text-[var(--text2)]">
+                    {post.scheduledDate} at {post.scheduledTime}
                   </p>
                 </div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className={`tag ${statusTag.color} text-xs`}>
+                    {statusTag.label}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePreview(post)}
+                    className="flex-1 btn btn-secondary btn-sm"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </button>
+                  <button className="flex-1 btn btn-secondary btn-sm">
+                    <Edit2 className="h-4 w-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(post.id)}
+                    className="flex-1 btn btn-sm text-[var(--red)] border border-[var(--red)]"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <div className="mb-4 pb-4 border-b border-[var(--border)]">
-                <p className="text-xs text-[var(--text2)]">
-                  {post.scheduledDate} at {post.scheduledTime}
-                </p>
-              </div>
-              <div className="flex items-center justify-between mb-4">
-                <span className={`tag ${statusTag.color} text-xs`}>
-                  {statusTag.label}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handlePreview(post)}
-                  className="flex-1 btn btn-secondary btn-sm"
-                >
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </button>
-                <button className="flex-1 btn btn-secondary btn-sm">
-                  <Edit2 className="h-4 w-4" />
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDelete(post.id)}
-                  className="flex-1 btn btn-sm text-[var(--red)] border border-[var(--red)]"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       <PreviewModal
         post={previewPost}

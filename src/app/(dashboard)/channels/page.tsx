@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Settings, LogOut, X } from 'lucide-react';
 
 interface Channel {
@@ -15,53 +15,6 @@ interface Channel {
   brandColor: string;
 }
 
-const CONNECTED_CHANNELS: Channel[] = [
-  {
-    id: 'instagram-1',
-    platform: 'Instagram',
-    handle: '@ronisbagels',
-    status: 'connected',
-    followers: 12400,
-    postsThisMonth: 18,
-    engagementRate: 4.2,
-    lastSyncedAt: '2 hours ago',
-    brandColor: '#E1306C',
-  },
-  {
-    id: 'tiktok-1',
-    platform: 'TikTok',
-    handle: '@ronisbagels',
-    status: 'connected',
-    followers: 8700,
-    postsThisMonth: 24,
-    engagementRate: 6.1,
-    lastSyncedAt: '1 hour ago',
-    brandColor: '#000000',
-  },
-  {
-    id: 'facebook-1',
-    platform: 'Facebook',
-    handle: 'Ronis Bagel Bakery',
-    status: 'connected',
-    followers: 5200,
-    postsThisMonth: 12,
-    engagementRate: 2.8,
-    lastSyncedAt: '3 hours ago',
-    brandColor: '#1877F2',
-  },
-  {
-    id: 'linkedin-1',
-    platform: 'LinkedIn',
-    handle: '@ronisbagels',
-    status: 'connected',
-    followers: 2100,
-    postsThisMonth: 8,
-    engagementRate: 3.5,
-    lastSyncedAt: '5 hours ago',
-    brandColor: '#0A66C2',
-  },
-];
-
 const AVAILABLE_PLATFORMS = [
   { name: 'X (Twitter)', color: '#000000' },
   { name: 'YouTube', color: '#FF0000' },
@@ -69,6 +22,17 @@ const AVAILABLE_PLATFORMS = [
   { name: 'Email', color: '#999999' },
   { name: 'Google Business', color: '#4285F4' },
 ];
+
+const PLATFORM_COLORS: { [key: string]: string } = {
+  instagram: '#E1306C',
+  tiktok: '#000000',
+  facebook: '#1877F2',
+  linkedin: '#0A66C2',
+  twitter: '#000000',
+  youtube: '#FF0000',
+  pinterest: '#E60023',
+  email: '#999999',
+};
 
 function ChannelCard({
   channel,
@@ -237,30 +201,83 @@ function AddChannelModal({
 
 export default function ChannelsPage() {
   const [isAddChannelModalOpen, setIsAddChannelModalOpen] = useState(false);
-  const [channels, setChannels] = useState<Channel[]>(CONNECTED_CHANNELS);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleDisconnect = (channelId: string) => {
-    setChannels(channels.filter((ch) => ch.id !== channelId));
+  const fetchChannels = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/channels');
+      if (res.ok) {
+        setChannels(await res.json());
+        setError(null);
+      } else {
+        setError('Failed to fetch channels');
+      }
+    } catch (e) {
+      console.error(e);
+      setError('Error fetching channels');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchChannels();
+  }, [fetchChannels]);
+
+  const handleDisconnect = async (channelId: string) => {
+    try {
+      const res = await fetch(`/api/channels/${channelId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        setChannels(channels.filter((ch) => ch.id !== channelId));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const handleAddChannel = (platform: string) => {
-    const newChannel: Channel = {
-      id: `${platform.toLowerCase()}-${Date.now()}`,
-      platform,
-      handle: `@ronisbagels`,
-      status: 'pending',
-      followers: 0,
-      postsThisMonth: 0,
-      engagementRate: 0,
-      lastSyncedAt: 'Pending verification',
-      brandColor: '#4285F4',
-    };
-    setChannels([...channels, newChannel]);
-    setIsAddChannelModalOpen(false);
+  const handleAddChannel = async (platform: string) => {
+    try {
+      const res = await fetch('/api/channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          platform,
+          handle: `@new_${platform.toLowerCase()}`,
+          status: 'pending',
+        }),
+      });
+      if (res.ok) {
+        await fetchChannels();
+        setIsAddChannelModalOpen(false);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const connectedChannels = channels.filter((ch) => ch.status === 'connected');
   const pendingChannels = channels.filter((ch) => ch.status === 'pending');
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-end justify-between">
+          <div>
+            <h1 className="page-title">Channels</h1>
+            <p className="page-subtitle">Connect and manage your social media accounts</p>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <p className="text-[var(--text2)]">Loading channels...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -280,34 +297,49 @@ export default function ChannelsPage() {
         </button>
       </div>
 
-      {connectedChannels.length > 0 && (
-        <section>
-          <h2 className="section-title mb-6">Connected Channels</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {connectedChannels.map((channel) => (
-              <ChannelCard
-                key={channel.id}
-                channel={channel}
-                onDisconnect={handleDisconnect}
-              />
-            ))}
-          </div>
-        </section>
+      {error && (
+        <div className="card bg-[var(--red)]/10 border border-[var(--red)]/20">
+          <p className="text-[var(--red)]">{error}</p>
+        </div>
       )}
 
-      {pendingChannels.length > 0 && (
-        <section>
-          <h2 className="section-title mb-6">Pending Channels</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {pendingChannels.map((channel) => (
-              <ChannelCard
-                key={channel.id}
-                channel={channel}
-                onDisconnect={handleDisconnect}
-              />
-            ))}
-          </div>
-        </section>
+      {connectedChannels.length === 0 && pendingChannels.length === 0 ? (
+        <div className="card text-center py-12">
+          <p className="text-[var(--text2)]">No channels connected yet.</p>
+          <p className="text-sm text-[var(--text2)] mt-2">Click "Add Channel" to get started.</p>
+        </div>
+      ) : (
+        <>
+          {connectedChannels.length > 0 && (
+            <section>
+              <h2 className="section-title mb-6">Connected Channels</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {connectedChannels.map((channel) => (
+                  <ChannelCard
+                    key={channel.id}
+                    channel={channel}
+                    onDisconnect={handleDisconnect}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {pendingChannels.length > 0 && (
+            <section>
+              <h2 className="section-title mb-6">Pending Channels</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {pendingChannels.map((channel) => (
+                  <ChannelCard
+                    key={channel.id}
+                    channel={channel}
+                    onDisconnect={handleDisconnect}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
 
       <AddChannelModal

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { database, schema, eq } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,9 +14,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = db.user.findByEmail(email);
+    const existing = await database
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, email))
+      .then(r => r[0] || null);
 
-    if (existingUser) {
+    if (existing) {
       return NextResponse.json(
         { error: 'User already exists' },
         { status: 400 }
@@ -24,11 +28,16 @@ export async function POST(request: NextRequest) {
     }
 
     // In production, hash the password with bcrypt
-    const user = db.user.create({
-      name,
-      email,
-      password, // In production: hashPassword(password)
-    });
+    const user = await database
+      .insert(schema.users)
+      .values({
+        name,
+        email,
+        password, // TODO: hash with bcrypt in production
+        tier: 'basic',
+      })
+      .returning()
+      .then(r => r[0]);
 
     return NextResponse.json(
       { success: true, userId: user.id },

@@ -1,103 +1,50 @@
-// Simple in-memory data store for development
-// In production, swap this with Prisma/Drizzle connected to your database
+import { sql } from "@vercel/postgres";
+import { drizzle } from "drizzle-orm/vercel-postgres";
+import { eq, desc, and, gte, lte, ilike, or, sql as dsql } from "drizzle-orm";
+import * as schema from "./schema";
 
-export interface User {
-  id: string;
-  name: string | null;
-  email: string | null;
-  image: string | null;
-  password: string | null;
-  tier: string;
-  stripeCustomerId: string | null;
-  createdAt: Date;
+// ─── Database connection ────────────────────────────────
+// Uses POSTGRES_URL env var automatically from @vercel/postgres
+export const database = drizzle(sql, { schema });
+
+// Re-export schema and helpers for easy imports
+export { schema, eq, desc, and, gte, lte, ilike, or, dsql };
+
+// ─── Helper: get current user ID from session ───────────
+export function getUserId(session: { user?: { id?: string } } | null): string {
+  const id = session?.user?.id;
+  if (!id) throw new Error("Unauthorized");
+  return id;
 }
 
-export interface Post {
-  id: string;
-  userId: string;
-  title: string;
-  content: string;
-  type: string;
-  channel: string;
-  status: string;
-  scheduledAt: Date | null;
-  publishedAt: Date | null;
-  reach: number;
-  engagement: number;
-  clicks: number;
-  revenue: number;
-  spend: number;
-  roi: number;
-  createdAt: Date;
-}
+// ─── Seed special dates helper ──────────────────────────
+export const SPECIAL_DATES_2026 = [
+  { title: "Valentine's Day", date: "2026-02-14", color: "#ec4899", type: "special_date" as const },
+  { title: "National Bagel Day", date: "2026-02-09", color: "#f59e0b", type: "special_date" as const },
+  { title: "St Patrick's Day", date: "2026-03-17", color: "#22c55e", type: "special_date" as const },
+  { title: "Mother's Day", date: "2026-03-22", color: "#ec4899", type: "special_date" as const },
+  { title: "Easter", date: "2026-04-05", color: "#a78bfa", type: "special_date" as const },
+  { title: "Earth Day", date: "2026-04-22", color: "#22c55e", type: "special_date" as const },
+  { title: "Father's Day", date: "2026-06-21", color: "#3b82f6", type: "special_date" as const },
+  { title: "Summer Solstice", date: "2026-06-21", color: "#f59e0b", type: "special_date" as const },
+  { title: "Halloween", date: "2026-10-31", color: "#f97316", type: "special_date" as const },
+  { title: "Black Friday", date: "2026-11-27", color: "#1f2937", type: "special_date" as const },
+  { title: "Cyber Monday", date: "2026-11-30", color: "#6366f1", type: "special_date" as const },
+  { title: "Christmas", date: "2026-12-25", color: "#ef4444", type: "special_date" as const },
+  { title: "New Year's Eve", date: "2026-12-31", color: "#8b5cf6", type: "special_date" as const },
+];
 
-// In-memory store (resets on restart — for development only)
-const store = {
-  users: new Map<string, User>(),
-  posts: [] as Post[],
-};
-
-function genId() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
-
-export const db = {
-  user: {
-    findByEmail: (email: string) => {
-      for (const u of store.users.values()) {
-        if (u.email === email) return u;
-      }
-      return null;
-    },
-    findById: (id: string) => store.users.get(id) || null,
-    create: (data: Partial<User> & { email: string }) => {
-      const user: User = {
-        id: genId(),
-        name: data.name || null,
-        email: data.email,
-        image: data.image || null,
-        password: data.password || null,
-        tier: data.tier || "basic",
-        stripeCustomerId: null,
-        createdAt: new Date(),
-      };
-      store.users.set(user.id, user);
-      return user;
-    },
-    update: (id: string, data: Partial<User>) => {
-      const user = store.users.get(id);
-      if (!user) return null;
-      Object.assign(user, data);
-      return user;
-    },
-    list: () => Array.from(store.users.values()),
-  },
-  post: {
-    findByUserId: (userId: string) => store.posts.filter(p => p.userId === userId),
-    create: (data: Partial<Post> & { userId: string; title: string; channel: string }) => {
-      const post: Post = {
-        id: genId(),
-        userId: data.userId,
-        title: data.title,
-        content: data.content || "",
-        type: data.type || "post",
-        channel: data.channel,
-        status: data.status || "draft",
-        scheduledAt: data.scheduledAt || null,
-        publishedAt: data.publishedAt || null,
-        reach: data.reach || 0,
-        engagement: data.engagement || 0,
-        clicks: data.clicks || 0,
-        revenue: data.revenue || 0,
-        spend: data.spend || 0,
-        roi: data.roi || 0,
-        createdAt: new Date(),
-      };
-      store.posts.push(post);
-      return post;
-    },
-    list: () => store.posts,
-  },
-};
-
-export default db;
+// ─── Type exports ───────────────────────────────────────
+export type User = typeof schema.users.$inferSelect;
+export type NewUser = typeof schema.users.$inferInsert;
+export type BrandProfile = typeof schema.brandProfiles.$inferSelect;
+export type Channel = typeof schema.channels.$inferSelect;
+export type Post = typeof schema.posts.$inferSelect;
+export type Campaign = typeof schema.campaigns.$inferSelect;
+export type Contact = typeof schema.contacts.$inferSelect;
+export type ContactActivity = typeof schema.contactActivities.$inferSelect;
+export type Voucher = typeof schema.vouchers.$inferSelect;
+export type VoucherRedemption = typeof schema.voucherRedemptions.$inferSelect;
+export type CalendarEvent = typeof schema.calendarEvents.$inferSelect;
+export type GrowthExperiment = typeof schema.growthExperiments.$inferSelect;
+export type AiSettings = typeof schema.aiSettings.$inferSelect;

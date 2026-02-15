@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { db } from '@/lib/db';
+import { database, schema, eq } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,8 +32,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find user and update tier
-    const existingUser = db.user.findByEmail(session.user.email);
+    // Find user
+    const existingUser = await database
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, session.user.email))
+      .then(r => r[0] || null);
+
     if (!existingUser) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -41,12 +46,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const user = db.user.update(existingUser.id, {
-      tier: tier.toLowerCase(),
-    });
+    // Update tier
+    const updated = await database
+      .update(schema.users)
+      .set({ tier: tier.toLowerCase(), updatedAt: new Date() })
+      .where(eq(schema.users.id, existingUser.id))
+      .returning()
+      .then(r => r[0]);
 
     return NextResponse.json(
-      { success: true, user },
+      { success: true, user: updated },
       { status: 200 }
     );
   } catch (error) {
