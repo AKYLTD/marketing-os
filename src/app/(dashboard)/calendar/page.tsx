@@ -1,89 +1,69 @@
 'use client';
 
 import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 
-const samplePosts = {
-  '2026-01-05': [
-    {
-      id: 1,
-      title: 'New Year Campaign Launch',
-      reach: '12.4K',
-      engagement: '1.2K',
-      revenue: '£890',
-      roi: '340%',
-    },
-  ],
-  '2026-01-12': [
-    {
-      id: 2,
-      title: 'Weekly Newsletter',
-      reach: '8.3K',
-      engagement: '2.1K',
-      revenue: '£620',
-      roi: '380%',
-    },
-    {
-      id: 3,
-      title: 'Instagram Story Series',
-      reach: '15.6K',
-      engagement: '1.8K',
-      revenue: '£450',
-      roi: '210%',
-    },
-  ],
-  '2026-01-18': [
-    {
-      id: 4,
-      title: 'Customer Testimonial Video',
-      reach: '24.8K',
-      engagement: '3.2K',
-      revenue: '£1,240',
-      roi: '450%',
-    },
-  ],
-  '2026-01-25': [
-    {
-      id: 5,
-      title: 'Product Launch Announcement',
-      reach: '32.1K',
-      engagement: '2.8K',
-      revenue: '£1,680',
-      roi: '520%',
-    },
-  ],
-  '2026-02-02': [
-    {
-      id: 6,
-      title: 'Flash Sale Promotion',
-      reach: '18.9K',
-      engagement: '2.4K',
-      revenue: '£920',
-      roi: '380%',
-    },
+interface Post {
+  id: number;
+  title: string;
+  channel: 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn';
+  time: string;
+  status: 'Draft' | 'Scheduled' | 'Published';
+}
+
+interface SpecialDate {
+  date: number;
+  emoji: string;
+  name: string;
+  description: string;
+}
+
+const specialDates: Record<number, SpecialDate> = {
+  9: { date: 9, emoji: '🥯', name: 'National Bagel Day', description: 'Celebrate the perfect bagel!' },
+  14: { date: 14, emoji: '💝', name: "Valentine's Day", description: 'Share love and delicious bagels' },
+  17: { date: 17, emoji: '🍀', name: "St Patrick's Day", description: 'Lucky bagel colors available' },
+  30: { date: 30, emoji: '💐', name: "Mother's Day", description: 'Treat the special women in your life' },
+};
+
+const postsData: Record<string, Post[]> = {
+  '2026-02-06': [
+    { id: 1, title: 'Weekend Breakfast Goals', channel: 'Instagram', time: '09:00 AM', status: 'Published' },
   ],
   '2026-02-08': [
-    {
-      id: 7,
-      title: 'Influencer Collaboration',
-      reach: '21.3K',
-      engagement: '2.9K',
-      revenue: '£1,120',
-      roi: '410%',
-    },
-    {
-      id: 8,
-      title: 'Behind-the-Scenes Reel',
-      reach: '14.2K',
-      engagement: '1.6K',
-      revenue: '£680',
-      roi: '290%',
-    },
+    { id: 2, title: 'TikTok Bagel Hack', channel: 'TikTok', time: '02:00 PM', status: 'Published' },
+  ],
+  '2026-02-10': [
+    { id: 3, title: 'Community Spotlight', channel: 'Facebook', time: '10:30 AM', status: 'Published' },
+  ],
+  '2026-02-13': [
+    { id: 4, title: 'Valentine Promo Post', channel: 'Instagram', time: '08:00 AM', status: 'Scheduled' },
+    { id: 5, title: 'LinkedIn Article', channel: 'LinkedIn', time: '10:00 AM', status: 'Scheduled' },
+  ],
+  '2026-02-14': [
+    { id: 6, title: 'Love & Bagels Campaign', channel: 'Instagram', time: '06:00 AM', status: 'Scheduled' },
+    { id: 7, title: 'Valentine Gift Guide', channel: 'TikTok', time: '12:00 PM', status: 'Scheduled' },
+  ],
+  '2026-02-16': [
+    { id: 8, title: 'Artisan Spotlight', channel: 'Facebook', time: '03:00 PM', status: 'Scheduled' },
+  ],
+  '2026-02-20': [
+    { id: 9, title: 'Weekly Bagel Drop', channel: 'Instagram', time: '07:00 AM', status: 'Draft' },
+  ],
+  '2026-02-22': [
+    { id: 10, title: 'Behind The Scenes', channel: 'TikTok', time: '11:00 AM', status: 'Scheduled' },
+  ],
+  '2026-03-04': [
+    { id: 11, title: 'Pancake Day Twist', channel: 'Instagram', time: '09:00 AM', status: 'Scheduled' },
+  ],
+  '2026-03-17': [
+    { id: 12, title: 'Lucky Green Bagels', channel: 'Instagram', time: '08:00 AM', status: 'Draft' },
+    { id: 13, title: 'St Patrick Celebration', channel: 'TikTok', time: '01:00 PM', status: 'Draft' },
   ],
 };
 
 export default function CalendarPage() {
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 0)); // January 2026
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 1)); // February 2026
+  const [selectedDate, setSelectedDate] = useState<number | null>(null);
 
   const daysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -98,21 +78,24 @@ export default function CalendarPage() {
     year: 'numeric',
   });
 
-  const dayHeaders = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const getChannelColor = (channel: string) => {
+    const colors: Record<string, string> = {
+      Instagram: '#ec4899',
+      TikTok: '#000000',
+      Facebook: '#1f2937',
+      LinkedIn: '#0a66c2',
+    };
+    return colors[channel] || '#6366f1';
+  };
 
-  const days = [];
-  const firstDay = firstDayOfMonth(currentMonth);
-  const adjustedFirstDay = firstDay === 0 ? 6 : firstDay - 1;
-
-  // Add empty cells for days before month starts
-  for (let i = 0; i < adjustedFirstDay; i++) {
-    days.push(null);
-  }
-
-  // Add days of the month
-  for (let i = 1; i <= daysInMonth(currentMonth); i++) {
-    days.push(i);
-  }
+  const getStatusTag = (status: string) => {
+    const tags: Record<string, string> = {
+      Draft: 'tag-amber',
+      Scheduled: 'tag-blue',
+      Published: 'tag-green',
+    };
+    return tags[status] || 'tag-blue';
+  };
 
   const previousMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
@@ -124,144 +107,230 @@ export default function CalendarPage() {
     setSelectedDate(null);
   };
 
-  const getPostsForDay = (day: number | null) => {
+  const getPostsForDay = (day: number | null): Post[] => {
     if (!day) return [];
     const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return samplePosts[dateStr as keyof typeof samplePosts] || [];
+    return postsData[dateStr] || [];
   };
 
-  const selectedPosts = selectedDate ? getPostsForDay(parseInt(selectedDate)) : [];
+  const selectedPosts = selectedDate ? getPostsForDay(selectedDate) : [];
+  const selectedSpecialDate = selectedDate ? specialDates[selectedDate] : null;
+
+  const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days: (number | null)[] = [];
+  const firstDay = firstDayOfMonth(currentMonth);
+
+  for (let i = 0; i < firstDay; i++) {
+    days.push(null);
+  }
+
+  for (let i = 1; i <= daysInMonth(currentMonth); i++) {
+    days.push(i);
+  }
+
+  const today = new Date();
+  const isToday = (day: number | null) => {
+    return (
+      day &&
+      day === today.getDate() &&
+      currentMonth.getMonth() === today.getMonth() &&
+      currentMonth.getFullYear() === today.getFullYear()
+    );
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
-        <p className="mt-2 text-gray-600">Plan and track your content calendar</p>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Header */}
+      <div className="border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <h1 className="page-title">Content Calendar</h1>
+          <p className="page-subtitle">Plan, schedule, and track your content across all channels</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Calendar */}
-        <div className="lg:col-span-2 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          {/* Month Navigation */}
-          <div className="mb-6 flex items-center justify-between">
-            <button
-              onClick={previousMonth}
-              className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-            >
-              ← Previous
-            </button>
-            <h2 className="text-lg font-bold text-gray-900">{monthName}</h2>
-            <button
-              onClick={nextMonth}
-              className="rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200"
-            >
-              Next →
-            </button>
-          </div>
-
-          {/* Day Headers */}
-          <div className="mb-4 grid grid-cols-7 gap-2">
-            {dayHeaders.map((day) => (
-              <div
-                key={day}
-                className="rounded-lg bg-indigo-50 px-2 py-2 text-center text-sm font-semibold text-indigo-700"
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Calendar */}
+          <div className="lg:col-span-2 card p-6">
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={previousMonth}
+                className="btn btn-secondary btn-sm p-2"
+                title="Previous month"
               >
-                {day}
-              </div>
-            ))}
-          </div>
+                <ChevronLeft size={18} />
+              </button>
+              <h2 className="section-title">{monthName}</h2>
+              <button
+                onClick={nextMonth}
+                className="btn btn-secondary btn-sm p-2"
+                title="Next month"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day, index) => {
-              const posts = getPostsForDay(day);
-              const dateStr =
-                day !== null
-                  ? `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                  : null;
-              const isSelected = selectedDate === dateStr;
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                  className={`cal-cell relative min-h-24 rounded-lg border-2 p-2 text-left transition-colors ${
-                    day === null
-                      ? 'bg-gray-50'
-                      : isSelected
-                        ? 'border-indigo-600 bg-indigo-50'
-                        : 'border-gray-200 bg-white hover:border-indigo-400'
-                  }`}
+            {/* Day Headers */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {dayHeaders.map((day) => (
+                <div
+                  key={day}
+                  className="text-center text-sm font-semibold py-2"
+                  style={{ color: 'var(--text2)' }}
                 >
-                  {day !== null && (
-                    <>
-                      <span className="block font-semibold text-gray-900">{day}</span>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {posts.map((_, i) => (
-                          <div
-                            key={i}
-                            className={`h-2 w-2 rounded-full ${
-                              i === 0
-                                ? 'bg-green-500'
-                                : i === 1
-                                  ? 'bg-blue-500'
-                                  : 'bg-purple-500'
-                            }`}
-                          ></div>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Detail Panel */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-gray-900">
-            {selectedDate ? selectedDate : 'Select a day'}
-          </h3>
-
-          {selectedPosts.length > 0 ? (
-            <div className="space-y-4">
-              {selectedPosts.map((post) => (
-                <div key={post.id} className="border-b border-gray-200 pb-4 last:border-b-0">
-                  <h4 className="mb-2 font-medium text-gray-900">{post.title}</h4>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between">
-                      <span>Reach</span>
-                      <span className="font-semibold text-gray-900">{post.reach}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Engagement</span>
-                      <span className="font-semibold text-gray-900">{post.engagement}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Revenue</span>
-                      <span className="font-semibold text-gray-900">{post.revenue}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>ROI</span>
-                      <span className="font-semibold text-green-600">{post.roi}</span>
-                    </div>
-                  </div>
+                  {day}
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-center text-sm text-gray-500">
-              {selectedDate ? 'No posts scheduled' : 'Select a date to view details'}
-            </p>
-          )}
 
-          {selectedDate && selectedPosts.length > 0 && (
-            <button className="mt-6 w-full rounded-lg bg-indigo-600 px-4 py-2 text-center text-sm font-medium text-white hover:bg-indigo-700">
-              Edit Posts
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {days.map((day, index) => {
+                const posts = getPostsForDay(day);
+                const special = day ? specialDates[day] : null;
+                const todayFlag = isToday(day);
+
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedDate(selectedDate === day ? null : day)}
+                    className={`cal-cell relative min-h-20 sm:min-h-24 rounded-lg p-2 text-left transition-all hover:shadow-md ${
+                      day === null
+                        ? 'opacity-0 pointer-events-none'
+                        : selectedDate === day
+                          ? 'ring-2'
+                          : ''
+                    }`}
+                    style={{
+                      backgroundColor: day === null ? 'transparent' : 'var(--bg2)',
+                      borderColor: 'var(--border)',
+                      ringColor: selectedDate === day ? 'var(--accent)' : 'transparent',
+                    }}
+                  >
+                    {day && (
+                      <>
+                        <div className="flex justify-between items-start mb-1">
+                          <span
+                            className={`text-sm font-bold ${
+                              todayFlag ? 'bg-red-500 text-white px-1.5 py-0.5 rounded' : ''
+                            }`}
+                            style={{ color: todayFlag ? undefined : 'var(--text)' }}
+                          >
+                            {day}
+                          </span>
+                        </div>
+
+                        {/* Special Date Badge */}
+                        {special && (
+                          <div
+                            className="mb-1 text-xs font-semibold px-1.5 py-1 rounded line-clamp-1"
+                            style={{ backgroundColor: 'var(--accent-bg)', color: 'var(--accent)' }}
+                          >
+                            {special.emoji} {special.name.split(' ')[0]}
+                          </div>
+                        )}
+
+                        {/* Post Indicators */}
+                        <div className="flex flex-wrap gap-0.5">
+                          {posts.slice(0, 3).map((post, idx) => (
+                            <div
+                              key={idx}
+                              className="w-1.5 h-1.5 rounded-full"
+                              style={{ backgroundColor: getChannelColor(post.channel) }}
+                              title={post.channel}
+                            />
+                          ))}
+                          {posts.length > 3 && (
+                            <span className="text-xs" style={{ color: 'var(--text3)' }}>
+                              +{posts.length - 3}
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-6 flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text2)' }}>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#ec4899' }} />
+                <span>Instagram</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#000000' }} />
+                <span>TikTok</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#1f2937' }} />
+                <span>Facebook</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: '#0a66c2' }} />
+                <span>LinkedIn</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detail Panel */}
+          <div className="card p-6 h-fit sticky top-4">
+            <h3 className="section-title mb-4">
+              {selectedDate
+                ? `${currentMonth.toLocaleString('default', { month: 'short' })} ${selectedDate}`
+                : 'Select a date'}
+            </h3>
+
+            {selectedSpecialDate && (
+              <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: 'var(--accent-bg)' }}>
+                <div className="text-2xl mb-2">{selectedSpecialDate.emoji}</div>
+                <h4 className="font-bold mb-1" style={{ color: 'var(--accent)' }}>
+                  {selectedSpecialDate.name}
+                </h4>
+                <p className="text-xs mb-3" style={{ color: 'var(--text2)' }}>
+                  {selectedSpecialDate.description}
+                </p>
+                <button className="btn btn-primary btn-sm w-full">Create Campaign</button>
+              </div>
+            )}
+
+            {selectedPosts.length > 0 ? (
+              <div className="space-y-3 mb-6">
+                {selectedPosts.map((post) => (
+                  <div key={post.id} className="border rounded-lg p-3" style={{ borderColor: 'var(--border)' }}>
+                    <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text)' }}>
+                      {post.title}
+                    </p>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: getChannelColor(post.channel) }}
+                        />
+                        <span style={{ color: 'var(--text2)' }}>{post.channel}</span>
+                      </div>
+                      <span className={`tag ${getStatusTag(post.status)}`}>{post.status}</span>
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: 'var(--text3)' }}>
+                      {post.time}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm mb-6" style={{ color: 'var(--text3)' }}>
+                {selectedDate ? 'No posts scheduled for this date' : 'Select a date to view details'}
+              </p>
+            )}
+
+            <button className="btn btn-secondary btn-sm w-full flex items-center justify-center gap-2">
+              <Plus size={16} />
+              Add Post
             </button>
-          )}
+          </div>
         </div>
       </div>
     </div>

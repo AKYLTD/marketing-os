@@ -1,180 +1,622 @@
 'use client';
 
 import { useState } from 'react';
+import { Plus, X } from 'lucide-react';
 
-const personalityTraits = [
-  'Authentic',
-  'Community-driven',
-  'Artisan',
-  'Warm',
-  'Premium',
-  'Local',
-];
+interface BrandState {
+  businessName: string;
+  industry: string;
+  foundedYear: number;
+  location: string;
+  website: string;
+  maturity: number;
+  direction: number;
+  ageRanges: string[];
+  genderMale: number;
+  incomeLevel: string;
+  interests: string[];
+  interestInput: string;
+  playfulProfessional: number;
+  boldSubtle: number;
+  modernClassic: number;
+  friendlyAuthoritative: number;
+  innovativeTraditional: number;
+  formality: number;
+  humor: number;
+  enthusiasm: number;
+  emojiUsage: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  brandStory: string;
+  competitors: Array<{ name: string; url: string }>;
+  usp: string[];
+}
 
-const colorSwatches = [
-  { color: '#6366F1', name: 'Primary Indigo' },
-  { color: '#F59E0B', name: 'Accent Amber' },
-  { color: '#10B981', name: 'Success Green' },
-  { color: '#1F2937', name: 'Neutral Dark' },
-];
+const initialState: BrandState = {
+  businessName: "Roni's Bagel Bakery",
+  industry: 'Food & Beverage',
+  foundedYear: 2019,
+  location: 'London, UK',
+  website: 'www.ronisbagels.co.uk',
+  maturity: 60,
+  direction: 20,
+  ageRanges: ['25-34', '35-44'],
+  genderMale: 45,
+  incomeLevel: 'Premium',
+  interests: ['Coffee', 'Artisan', 'Local', 'Sustainability'],
+  interestInput: '',
+  playfulProfessional: 30,
+  boldSubtle: 15,
+  modernClassic: 25,
+  friendlyAuthoritative: 40,
+  innovativeTraditional: 10,
+  formality: 7,
+  humor: 6,
+  enthusiasm: 7,
+  emojiUsage: 'Minimal',
+  primaryColor: '#D4A574',
+  secondaryColor: '#FFFFFF',
+  accentColor: '#8B4513',
+  brandStory:
+    'Roni\'s Bagel Bakery brings authentic, handcrafted bagels to London. We source premium ingredients locally and bake fresh daily, celebrating the bagel tradition with a modern twist.',
+  competitors: [
+    { name: 'Beigel Bake', url: 'www.beigelbake.co.uk' },
+    { name: 'Brick Lane Bagel', url: 'www.bricklanebagels.com' },
+    { name: 'The Bagel House', url: 'www.thebagelhouse.co.uk' },
+  ],
+  usp: [
+    'Handcrafted using traditional recipes',
+    'Locally sourced, sustainable ingredients',
+    'Same-day artisan production',
+  ],
+};
 
 export default function BrandPage() {
-  const [sliders, setSliders] = useState({
-    formality: 30,
-    humor: 55,
-    enthusiasm: 80,
-  });
+  const [state, setState] = useState<BrandState>(initialState);
 
-  const handleSliderChange = (key: string, value: number) => {
-    setSliders((prev) => ({ ...prev, [key]: value }));
+  const handleInputChange = (field: keyof BrandState, value: any) => {
+    setState((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleAgeRangeChange = (range: string) => {
+    setState((prev) => ({
+      ...prev,
+      ageRanges: prev.ageRanges.includes(range)
+        ? prev.ageRanges.filter((r) => r !== range)
+        : [...prev.ageRanges, range],
+    }));
+  };
+
+  const addInterest = () => {
+    if (state.interestInput.trim()) {
+      setState((prev) => ({
+        ...prev,
+        interests: [...prev.interests, prev.interestInput],
+        interestInput: '',
+      }));
+    }
+  };
+
+  const removeInterest = (interest: string) => {
+    setState((prev) => ({
+      ...prev,
+      interests: prev.interests.filter((i) => i !== interest),
+    }));
+  };
+
+  const updateCompetitor = (index: number, field: 'name' | 'url', value: string) => {
+    setState((prev) => ({
+      ...prev,
+      competitors: prev.competitors.map((c, i) =>
+        i === index ? { ...c, [field]: value } : c
+      ),
+    }));
+  };
+
+  const addCompetitor = () => {
+    setState((prev) => ({
+      ...prev,
+      competitors: [...prev.competitors, { name: '', url: '' }],
+    }));
+  };
+
+  const updateUSP = (index: number, value: string) => {
+    setState((prev) => ({
+      ...prev,
+      usp: prev.usp.map((u, i) => (i === index ? value : u)),
+    }));
+  };
+
+  const traitLabels = [
+    { left: 'Playful', right: 'Professional', value: state.playfulProfessional },
+    { left: 'Bold', right: 'Subtle', value: state.boldSubtle },
+    { left: 'Modern', right: 'Classic', value: state.modernClassic },
+    { left: 'Friendly', right: 'Authoritative', value: state.friendlyAuthoritative },
+    { left: 'Innovative', right: 'Traditional', value: state.innovativeTraditional },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Brand DNA</h1>
-        <p className="mt-2 text-gray-600">
-          Your brand identity and voice configuration
-        </p>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
+      {/* Header */}
+      <div className="border-b" style={{ borderColor: 'var(--border)' }}>
+        <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <h1 className="page-title">Brand DNA Profile</h1>
+          <p className="page-subtitle">
+            Define your brand identity for AI-powered content that matches your voice perfectly
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Brand Score Card */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-6 text-lg font-semibold text-gray-900">Brand Score</h2>
-          <div className="space-y-6">
-            <div className="text-center">
-              <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 border-4 border-indigo-200">
-                <span className="text-4xl font-bold text-indigo-600">87</span>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Brand Sliders */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          {/* Brand Stage */}
+          <div className="card p-6">
+            <h3 className="section-title mb-4">Brand Stage</h3>
+            <div className="space-y-4">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={state.maturity}
+                onChange={(e) => handleInputChange('maturity', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded cursor-pointer"
+              />
+              <div className="flex justify-between text-xs" style={{ color: 'var(--text2)' }}>
+                <span>New Brand (Building from scratch)</span>
+                <span>Established Brand (Refining existing)</span>
+              </div>
+              <div
+                className="text-center font-semibold"
+                style={{ color: 'var(--accent)' }}
+              >
+                {state.maturity}%
               </div>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm font-medium text-gray-700">
-                <span>Consistency</span>
-                <span>87%</span>
+          </div>
+
+          {/* Brand Direction */}
+          <div className="card p-6">
+            <h3 className="section-title mb-4">Brand Direction</h3>
+            <div className="space-y-4">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={state.direction}
+                onChange={(e) => handleInputChange('direction', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded cursor-pointer"
+              />
+              <div className="flex justify-between text-xs" style={{ color: 'var(--text2)' }}>
+                <span>Keep Existing Identity</span>
+                <span>Complete Rebrand</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-gray-200">
-                <div
-                  className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600"
-                  style={{ width: '87%' }}
-                ></div>
+              <div
+                className="text-center font-semibold"
+                style={{ color: 'var(--accent)' }}
+              >
+                {state.direction}%
               </div>
             </div>
-            <p className="text-center text-sm text-gray-600">
-              <span className="font-semibold text-indigo-600">Out of 100</span> - Excellent consistency
-            </p>
           </div>
         </div>
 
-        {/* Personality Traits Card */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-6 text-lg font-semibold text-gray-900">Personality Traits</h2>
-          <div className="flex flex-wrap gap-3">
-            {personalityTraits.map((trait) => (
-              <span
-                key={trait}
-                className="inline-block rounded-full bg-indigo-100 px-4 py-2 text-sm font-medium text-indigo-700"
+        {/* Brand Info */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Brand Info</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div>
+              <label className="form-label">Business Name</label>
+              <input
+                type="text"
+                value={state.businessName}
+                onChange={(e) => handleInputChange('businessName', e.target.value)}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Industry</label>
+              <select
+                value={state.industry}
+                onChange={(e) => handleInputChange('industry', e.target.value)}
+                className="form-input"
               >
-                {trait}
-              </span>
+                <option>Food & Beverage</option>
+                <option>Fashion</option>
+                <option>Tech</option>
+                <option>Health</option>
+                <option>Finance</option>
+                <option>Real Estate</option>
+                <option>Education</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="form-label">Founded Year</label>
+              <input
+                type="number"
+                value={state.foundedYear}
+                onChange={(e) => handleInputChange('foundedYear', parseInt(e.target.value))}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Location</label>
+              <input
+                type="text"
+                value={state.location}
+                onChange={(e) => handleInputChange('location', e.target.value)}
+                className="form-input"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="form-label">Website</label>
+              <input
+                type="url"
+                value={state.website}
+                onChange={(e) => handleInputChange('website', e.target.value)}
+                className="form-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Target Audience */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Target Audience</h3>
+
+          {/* Age Range */}
+          <div className="mb-8">
+            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+              Age Range
+            </h4>
+            <div className="flex flex-wrap gap-4">
+              {['18-24', '25-34', '35-44', '45-54', '55+'].map((range) => (
+                <label key={range} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={state.ageRanges.includes(range)}
+                    onChange={() => handleAgeRangeChange(range)}
+                    className="w-4 h-4 rounded"
+                  />
+                  <span style={{ color: 'var(--text2)' }}>{range}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Gender Split */}
+          <div className="mb-8">
+            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+              Gender Split
+            </h4>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={state.genderMale}
+              onChange={(e) => handleInputChange('genderMale', parseInt(e.target.value))}
+              className="w-full h-2 bg-gray-300 rounded cursor-pointer"
+            />
+            <div className="flex justify-between text-xs mt-2" style={{ color: 'var(--text2)' }}>
+              <span>{state.genderMale}% Male</span>
+              <span>{100 - state.genderMale}% Female</span>
+            </div>
+          </div>
+
+          {/* Income Level */}
+          <div className="mb-8">
+            <label className="form-label">Income Level</label>
+            <select
+              value={state.incomeLevel}
+              onChange={(e) => handleInputChange('incomeLevel', e.target.value)}
+              className="form-input"
+            >
+              <option>Budget</option>
+              <option>Mid-range</option>
+              <option>Premium</option>
+              <option>Luxury</option>
+            </select>
+          </div>
+
+          {/* Interests */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+              Interests
+            </h4>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {state.interests.map((interest) => (
+                <div key={interest} className="tag tag-blue flex items-center gap-1">
+                  {interest}
+                  <button
+                    onClick={() => removeInterest(interest)}
+                    className="hover:opacity-80"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={state.interestInput}
+                onChange={(e) => handleInputChange('interestInput', e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addInterest()}
+                placeholder="Add interest..."
+                className="form-input flex-1"
+              />
+              <button onClick={addInterest} className="btn btn-secondary">
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Brand Personality */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Brand Personality</h3>
+          <div className="space-y-8">
+            {traitLabels.map((trait, idx) => (
+              <div key={idx}>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium" style={{ color: 'var(--text2)' }}>
+                    {trait.left}
+                  </span>
+                  <span className="text-sm font-medium" style={{ color: 'var(--text2)' }}>
+                    {trait.right}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="-50"
+                  max="50"
+                  value={trait.value}
+                  onChange={(e) => {
+                    const traitKeys: (keyof BrandState)[] = [
+                      'playfulProfessional',
+                      'boldSubtle',
+                      'modernClassic',
+                      'friendlyAuthoritative',
+                      'innovativeTraditional',
+                    ];
+                    handleInputChange(traitKeys[idx], parseInt(e.target.value));
+                  }}
+                  className="w-full h-2 bg-gray-300 rounded cursor-pointer"
+                />
+                <div className="text-center text-xs mt-1" style={{ color: 'var(--accent)' }}>
+                  {trait.value > 0 ? '+' : ''}{trait.value}
+                </div>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Voice Settings Card */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-6 text-lg font-semibold text-gray-900">Voice Settings</h2>
-          <div className="space-y-8">
-            {/* Formality Slider */}
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <label className="text-sm font-medium text-gray-900">Formality</label>
-                <span className="text-sm font-semibold text-indigo-600">{sliders.formality}%</span>
-              </div>
+        {/* Voice & Tone */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Voice & Tone</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+            <div>
+              <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+                Formality
+              </h4>
               <input
                 type="range"
-                min="0"
-                max="100"
-                value={sliders.formality}
-                onChange={(e) => handleSliderChange('formality', parseInt(e.target.value))}
-                className="h-2 w-full rounded-lg bg-gray-200 accent-indigo-600"
+                min="1"
+                max="10"
+                value={state.formality}
+                onChange={(e) => handleInputChange('formality', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded cursor-pointer"
               />
+              <div className="text-center text-sm mt-2" style={{ color: 'var(--accent)' }}>
+                {state.formality}/10
+              </div>
             </div>
-
-            {/* Humor Slider */}
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <label className="text-sm font-medium text-gray-900">Humor</label>
-                <span className="text-sm font-semibold text-indigo-600">{sliders.humor}%</span>
-              </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+                Humor
+              </h4>
               <input
                 type="range"
-                min="0"
-                max="100"
-                value={sliders.humor}
-                onChange={(e) => handleSliderChange('humor', parseInt(e.target.value))}
-                className="h-2 w-full rounded-lg bg-gray-200 accent-indigo-600"
+                min="1"
+                max="10"
+                value={state.humor}
+                onChange={(e) => handleInputChange('humor', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded cursor-pointer"
               />
+              <div className="text-center text-sm mt-2" style={{ color: 'var(--accent)' }}>
+                {state.humor}/10
+              </div>
             </div>
-
-            {/* Enthusiasm Slider */}
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <label className="text-sm font-medium text-gray-900">Enthusiasm</label>
-                <span className="text-sm font-semibold text-indigo-600">{sliders.enthusiasm}%</span>
-              </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+                Enthusiasm
+              </h4>
               <input
                 type="range"
-                min="0"
-                max="100"
-                value={sliders.enthusiasm}
-                onChange={(e) => handleSliderChange('enthusiasm', parseInt(e.target.value))}
-                className="h-2 w-full rounded-lg bg-gray-200 accent-indigo-600"
+                min="1"
+                max="10"
+                value={state.enthusiasm}
+                onChange={(e) => handleInputChange('enthusiasm', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-300 rounded cursor-pointer"
               />
+              <div className="text-center text-sm mt-2" style={{ color: 'var(--accent)' }}>
+                {state.enthusiasm}/10
+              </div>
+            </div>
+          </div>
+
+          {/* Emoji Usage */}
+          <div>
+            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>
+              Emoji Usage
+            </h4>
+            <div className="flex flex-wrap gap-4">
+              {['None', 'Minimal', 'Moderate', 'Heavy'].map((option) => (
+                <label key={option} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="emoji"
+                    value={option}
+                    checked={state.emojiUsage === option}
+                    onChange={(e) => handleInputChange('emojiUsage', e.target.value)}
+                    className="w-4 h-4"
+                  />
+                  <span style={{ color: 'var(--text2)' }}>{option}</span>
+                </label>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Visual Identity Card */}
-        <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-6 text-lg font-semibold text-gray-900">Visual Identity</h2>
-          <div className="space-y-6">
-            {/* Color Swatches */}
-            <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">Brand Colors</p>
-              <div className="flex gap-4">
-                {colorSwatches.map((swatch) => (
-                  <div key={swatch.color} className="space-y-2">
-                    <div
-                      className="h-16 w-16 rounded-lg border-2 border-gray-200 shadow-sm"
-                      style={{ backgroundColor: swatch.color }}
-                    ></div>
-                    <p className="text-xs text-gray-600">{swatch.color}</p>
-                  </div>
-                ))}
+        {/* Brand Colors */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Brand Colors</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div>
+              <label className="form-label">Primary Color</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={state.primaryColor}
+                  onChange={(e) => handleInputChange('primaryColor', e.target.value)}
+                  placeholder="#000000"
+                  className="form-input flex-1"
+                />
+                <div
+                  className="w-12 h-10 rounded border"
+                  style={{
+                    backgroundColor: state.primaryColor,
+                    borderColor: 'var(--border)',
+                  }}
+                />
               </div>
             </div>
-
-            {/* Font Info */}
-            <div className="border-t border-gray-200 pt-4">
-              <p className="text-sm font-medium text-gray-700">Typography</p>
-              <div className="mt-3 space-y-2">
-                <div>
-                  <p className="text-xs text-gray-600">Headings</p>
-                  <p className="font-semibold text-gray-900" style={{ fontFamily: 'Inter' }}>
-                    Inter Bold
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">Body</p>
-                  <p className="text-gray-900" style={{ fontFamily: 'Inter' }}>
-                    Inter Regular
-                  </p>
-                </div>
+            <div>
+              <label className="form-label">Secondary Color</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={state.secondaryColor}
+                  onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
+                  placeholder="#000000"
+                  className="form-input flex-1"
+                />
+                <div
+                  className="w-12 h-10 rounded border"
+                  style={{
+                    backgroundColor: state.secondaryColor,
+                    borderColor: 'var(--border)',
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Accent Color</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={state.accentColor}
+                  onChange={(e) => handleInputChange('accentColor', e.target.value)}
+                  placeholder="#000000"
+                  className="form-input flex-1"
+                />
+                <div
+                  className="w-12 h-10 rounded border"
+                  style={{
+                    backgroundColor: state.accentColor,
+                    borderColor: 'var(--border)',
+                  }}
+                />
               </div>
             </div>
           </div>
+
+          {/* Color Preview */}
+          <div className="flex gap-3 h-16">
+            <div
+              className="flex-1 rounded"
+              style={{ backgroundColor: state.primaryColor }}
+            />
+            <div
+              className="flex-1 rounded"
+              style={{ backgroundColor: state.secondaryColor }}
+            />
+            <div
+              className="flex-1 rounded"
+              style={{ backgroundColor: state.accentColor }}
+            />
+          </div>
+        </div>
+
+        {/* Brand Story */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-4">Brand Story</h3>
+          <label className="form-label">Tell your brand story in 2-3 sentences</label>
+          <textarea
+            value={state.brandStory}
+            onChange={(e) => handleInputChange('brandStory', e.target.value)}
+            rows={6}
+            className="form-input w-full"
+          />
+        </div>
+
+        {/* Competitors */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Competitors</h3>
+          <div className="space-y-4 mb-6">
+            {state.competitors.map((competitor, idx) => (
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <input
+                    type="text"
+                    value={competitor.name}
+                    onChange={(e) => updateCompetitor(idx, 'name', e.target.value)}
+                    placeholder="Competitor name"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="url"
+                    value={competitor.url}
+                    onChange={(e) => updateCompetitor(idx, 'url', e.target.value)}
+                    placeholder="Website URL"
+                    className="form-input"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={addCompetitor} className="btn btn-secondary">
+            <Plus size={16} />
+            Add Competitor
+          </button>
+        </div>
+
+        {/* USP */}
+        <div className="card p-6 mb-8">
+          <h3 className="section-title mb-6">Unique Selling Points</h3>
+          <div className="space-y-4">
+            {state.usp.map((point, idx) => (
+              <div key={idx}>
+                <label className="form-label">USP {idx + 1}</label>
+                <input
+                  type="text"
+                  value={point}
+                  onChange={(e) => updateUSP(idx, e.target.value)}
+                  className="form-input"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className="flex justify-end mb-12">
+          <button className="btn btn-primary">Save Profile</button>
         </div>
       </div>
     </div>
