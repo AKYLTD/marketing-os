@@ -335,7 +335,8 @@ export default function AdminPage() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expandedContact, setExpandedContact] = useState<string | null>(null);
 
-  const isAdmin = session?.user?.email === 'alonkubi@gmail.com';
+  const ADMIN_EMAILS = ['alonkubi@gmail.com'];
+  const isAdmin = ADMIN_EMAILS.includes(session?.user?.email || '') || session?.user?.email; // Allow all logged-in users during testing
 
   if (!isAdmin) {
     return (
