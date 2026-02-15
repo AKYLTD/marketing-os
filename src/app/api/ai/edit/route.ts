@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { database, schema, eq, getUserId, desc } from "@/lib/db";
+import { database, schema, eq, desc, getUserId } from "@/lib/db";
 import OpenAI from "openai";
 
 interface EditRequestBody {
@@ -205,13 +205,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // Get user ID
-    const userId = await getUserId(session.user.email);
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
-    }
+    const userId = getUserId(session);
 
     // Fetch brand profile
     const brandProfile = await database
@@ -233,10 +227,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const brandName = brand.name || "Your Brand";
     const brandIndustry = brand.industry || "General";
     const brandLocation = brand.location || "Global";
-    const brandPersonality = brand.personality || "balanced";
-    const voiceSettings = brand.voiceSettings || {};
-    const targetAudience = brand.targetAudience || "General audience";
-    const brandColors = brand.colors || ["#000000", "#FFFFFF"];
+    const brandPersonality = typeof brand.personality === 'object' ? JSON.stringify(brand.personality) : (brand.personality || "balanced");
+    const voiceSettings = (typeof brand.voiceSettings === 'object' && brand.voiceSettings) ? brand.voiceSettings as Record<string, any> : {};
+    const targetAudience = typeof brand.targetAudience === 'object' ? JSON.stringify(brand.targetAudience) : (brand.targetAudience || "General audience");
+    const brandColors = Array.isArray(brand.colors) ? brand.colors : (typeof brand.colors === 'object' && brand.colors) ? Object.values(brand.colors as Record<string, string>) : ["#000000", "#FFFFFF"];
 
     // Build context from recent posts
     const recentPostsContext = recentPosts

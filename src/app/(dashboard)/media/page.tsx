@@ -5,6 +5,7 @@ import {
   Upload, X, Trash2, Clock, Send, Loader2, Sparkles,
   Image as ImageIcon, Video, Wand2, Hash, Type, Eye,
   CheckCircle, AlertCircle, RotateCcw, Copy, Check,
+  Heart, MessageCircle, Share2, Bookmark,
 } from 'lucide-react';
 
 type Channel = 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn' | 'X';
@@ -45,7 +46,492 @@ const CHANNEL_CONFIG: Record<Channel, { emoji: string; color: string; aspectClas
   X: { emoji: '𝕏', color: '#000000', aspectClass: 'aspect-video', aspectLabel: '16:9 Landscape' },
 };
 
-// ─── SOCIAL PREVIEW COMPONENT ────────────────────────────
+// ─── INSTAGRAM PREVIEW ─────────────────────────────────────
+function InstagramPreview({
+  caption,
+  hashtags,
+  mediaUrl,
+  brandName,
+  brandColor,
+}: {
+  caption: string;
+  hashtags: string;
+  mediaUrl: string | null;
+  brandName: string;
+  brandColor: string;
+}) {
+  const isVideo = mediaUrl?.startsWith('data:video/');
+  const profileInitial = (brandName || 'B').charAt(0).toUpperCase();
+
+  return (
+    <div className="w-full max-w-[375px] mx-auto rounded-3xl overflow-hidden" style={{
+      backgroundColor: '#fff',
+      border: '12px solid #000',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+    }}>
+      {/* Status Bar */}
+      <div className="h-6 bg-black flex items-center justify-between px-3" style={{ fontSize: '10px', color: '#fff' }}>
+        <span>9:41</span>
+        <div className="flex gap-1">📶 📡 🔋</div>
+      </div>
+
+      {/* Header with Profile */}
+      <div className="flex items-center gap-3 px-3 py-2.5 border-b" style={{ borderColor: '#e0e0e0' }}>
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+          style={{ backgroundColor: brandColor || '#E1306C' }}
+        >
+          {profileInitial}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold" style={{ color: '#262626' }}>
+            {brandName || 'yourbrand'}
+          </p>
+          <p className="text-[10px]" style={{ color: '#8e8e8e' }}>
+            Sponsored
+          </p>
+        </div>
+        <button className="text-[10px] font-semibold px-3 py-1.5 rounded" style={{ color: '#0095f6', border: '1px solid #e0e0e0' }}>
+          Follow
+        </button>
+        <span style={{ color: '#262626', fontSize: '16px' }}>⋯</span>
+      </div>
+
+      {/* Media - FULL WIDTH, EDGE TO EDGE */}
+      <div className="w-full aspect-square relative overflow-hidden" style={{ backgroundColor: '#fafafa' }}>
+        {mediaUrl ? (
+          isVideo ? (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-5xl">▶️</div>
+            </div>
+          ) : (
+            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
+          )
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${brandColor || '#E1306C'}20, ${brandColor || '#E1306C'}05)` }}>
+            <div className="flex flex-col items-center gap-2">
+              <ImageIcon size={48} style={{ color: brandColor || '#E1306C', opacity: 0.3 }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Icons Row */}
+      <div className="px-3 pt-3 pb-1.5 flex items-center gap-4">
+        <Heart size={20} style={{ color: '#262626', cursor: 'pointer' }} strokeWidth={1.5} />
+        <MessageCircle size={20} style={{ color: '#262626', cursor: 'pointer' }} strokeWidth={1.5} />
+        <Share2 size={20} style={{ color: '#262626', cursor: 'pointer' }} strokeWidth={1.5} />
+        <Bookmark size={20} style={{ color: '#262626', cursor: 'pointer', marginLeft: 'auto' }} strokeWidth={1.5} />
+      </div>
+
+      {/* Likes Count */}
+      <div className="px-3 py-0.5">
+        <p className="text-xs font-semibold" style={{ color: '#262626' }}>12.5K likes</p>
+      </div>
+
+      {/* Caption with Username & Hashtags */}
+      <div className="px-3 pb-3">
+        <p className="text-xs leading-relaxed" style={{ color: '#262626' }}>
+          <span className="font-semibold">{(brandName || 'yourbrand').toLowerCase().replace(/\s+/g, '')} </span>
+          {caption || 'Your caption will appear here...'}
+          {hashtags && (
+            <>
+              <br />
+              <span style={{ color: '#0095f6' }}>{hashtags}</span>
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* View Comments */}
+      <div className="px-3 pb-2">
+        <p className="text-xs" style={{ color: '#8e8e8e' }}>View all 42 comments</p>
+      </div>
+
+      {/* Timestamp */}
+      <div className="px-3 pb-2">
+        <p className="text-[10px] uppercase" style={{ color: '#8e8e8e' }}>2 hours ago</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── TIKTOK PREVIEW ───────────────────────────────────────
+function TikTokPreview({
+  caption,
+  hashtags,
+  mediaUrl,
+  brandName,
+  brandColor,
+}: {
+  caption: string;
+  hashtags: string;
+  mediaUrl: string | null;
+  brandName: string;
+  brandColor: string;
+}) {
+  const isVideo = mediaUrl?.startsWith('data:video/');
+  const profileInitial = (brandName || 'B').charAt(0).toUpperCase();
+
+  return (
+    <div className="w-full max-w-[280px] mx-auto rounded-3xl overflow-hidden relative" style={{
+      backgroundColor: '#000',
+      aspectRatio: '9/16',
+      maxHeight: '520px',
+      border: '12px solid #000',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+    }}>
+      {/* Top Bar - Following | For You */}
+      <div className="absolute top-0 left-0 right-0 z-20 h-8 flex items-center justify-center gap-6 pt-2">
+        <p className="text-xs text-white font-medium">Following</p>
+        <p className="text-xs text-white opacity-60">For You</p>
+      </div>
+
+      {/* Media - FULL FRAME */}
+      <div className="absolute inset-0">
+        {mediaUrl ? (
+          isVideo ? (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-5xl">▶️</div>
+            </div>
+          ) : (
+            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
+          )
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(180deg, ${brandColor}40, #000)` }}>
+            <Video size={48} style={{ color: '#fff', opacity: 0.3 }} />
+          </div>
+        )}
+      </div>
+
+      {/* Right Side Floating Actions */}
+      <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5 z-20">
+        {/* Profile Button */}
+        <div className="flex flex-col items-center">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+            style={{ backgroundColor: brandColor || '#000', border: '2px solid #fff' }}
+          >
+            {profileInitial}
+          </div>
+          <div className="w-5 h-5 rounded-full bg-[#FE2C55] flex items-center justify-center -mt-2 text-white text-[10px] font-bold font-sans">+</div>
+        </div>
+
+        {/* Heart Count */}
+        <div className="flex flex-col items-center text-white text-xs">
+          <Heart size={24} fill="white" strokeWidth={0} />
+          <span className="text-[10px] mt-0.5">24.5K</span>
+        </div>
+
+        {/* Comment Count */}
+        <div className="flex flex-col items-center text-white text-xs">
+          <MessageCircle size={24} strokeWidth={1.5} />
+          <span className="text-[10px] mt-0.5">312</span>
+        </div>
+
+        {/* Share */}
+        <div className="flex flex-col items-center text-white text-xs">
+          <Share2 size={24} strokeWidth={1.5} />
+          <span className="text-[10px] mt-0.5">Share</span>
+        </div>
+
+        {/* Music Note */}
+        <div className="flex flex-col items-center text-white">
+          <span className="text-2xl">🎵</span>
+        </div>
+      </div>
+
+      {/* Bottom Caption Area */}
+      <div className="absolute left-3 right-16 bottom-6 z-20">
+        <p className="text-white text-xs font-bold mb-1">
+          @{(brandName || 'yourbrand').toLowerCase().replace(/\s+/g, '')}
+        </p>
+        <p className="text-white text-xs leading-relaxed line-clamp-2">
+          {caption || 'Your caption here...'}
+          {hashtags && (
+            <>
+              {' '}
+              <span style={{ color: '#58c4dc' }}>{hashtags}</span>
+            </>
+          )}
+        </p>
+
+        {/* Music Bar */}
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-white text-xs">🎵</span>
+          <div className="overflow-hidden flex-1">
+            <p className="text-white text-[10px] whitespace-nowrap animate-pulse">
+              Original Sound - {brandName || 'Your Brand'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FACEBOOK PREVIEW ──────────────────────────────────────
+function FacebookPreview({
+  caption,
+  hashtags,
+  mediaUrl,
+  brandName,
+  brandColor,
+}: {
+  caption: string;
+  hashtags: string;
+  mediaUrl: string | null;
+  brandName: string;
+  brandColor: string;
+}) {
+  const isVideo = mediaUrl?.startsWith('data:video/');
+  const profileInitial = (brandName || 'B').charAt(0).toUpperCase();
+
+  return (
+    <div className="w-full max-w-[500px] mx-auto rounded-lg overflow-hidden" style={{
+      backgroundColor: '#fff',
+      border: '1px solid #e0e0e0',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+    }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold"
+            style={{ backgroundColor: brandColor || '#1877F2' }}
+          >
+            {profileInitial}
+          </div>
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#050505' }}>
+              {brandName || 'Your Brand'}
+            </p>
+            <p className="text-xs" style={{ color: '#65676b' }}>2 hours ago • 🌐</p>
+          </div>
+        </div>
+        <button style={{ color: '#65676b' }}>⋯</button>
+      </div>
+
+      {/* Caption */}
+      <div className="px-4 py-2">
+        <p className="text-sm leading-relaxed" style={{ color: '#050505' }}>
+          {caption || 'Your caption here...'}
+          {hashtags && (
+            <>
+              <br />
+              <span style={{ color: '#0064d1' }}>{hashtags}</span>
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* Media */}
+      <div className="w-full aspect-video relative overflow-hidden" style={{ backgroundColor: '#f0f2f5' }}>
+        {mediaUrl ? (
+          isVideo ? (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-5xl">▶️</div>
+            </div>
+          ) : (
+            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
+          )
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${brandColor}15, #f0f2f5)` }}>
+            <ImageIcon size={40} style={{ color: '#1877F2', opacity: 0.3 }} />
+          </div>
+        )}
+      </div>
+
+      {/* Reactions & Counts */}
+      <div className="px-4 py-2 flex items-center justify-between text-xs" style={{ color: '#65676b', borderTop: '1px solid #e0e0e0' }}>
+        <span>👍😍 1.2K</span>
+        <div className="flex gap-4">
+          <span>156 comments</span>
+          <span>42 shares</span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="px-4 py-2 flex items-center justify-around text-xs font-semibold" style={{ color: '#65676b', borderTop: '1px solid #e0e0e0' }}>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">👍 Like</button>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">💬 Comment</button>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">📤 Share</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── LINKEDIN PREVIEW ──────────────────────────────────────
+function LinkedInPreview({
+  caption,
+  hashtags,
+  mediaUrl,
+  brandName,
+  brandColor,
+}: {
+  caption: string;
+  hashtags: string;
+  mediaUrl: string | null;
+  brandName: string;
+  brandColor: string;
+}) {
+  const isVideo = mediaUrl?.startsWith('data:video/');
+  const profileInitial = (brandName || 'B').charAt(0).toUpperCase();
+
+  return (
+    <div className="w-full max-w-[500px] mx-auto rounded-lg overflow-hidden" style={{
+      backgroundColor: '#fff',
+      border: '1px solid #e0e0e0',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+    }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold"
+            style={{ backgroundColor: brandColor || '#0A66C2' }}
+          >
+            {profileInitial}
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold" style={{ color: '#000' }}>
+              {brandName || 'Your Brand'}
+            </p>
+            <p className="text-xs" style={{ color: '#666' }}>1st •</p>
+            <p className="text-xs" style={{ color: '#666' }}>1,234 followers • 2h • 🌐</p>
+          </div>
+        </div>
+        <button style={{ color: '#65676b' }}>⋯</button>
+      </div>
+
+      {/* Caption */}
+      <div className="px-4 py-3">
+        <p className="text-sm leading-relaxed" style={{ color: '#000' }}>
+          {caption || 'Your professional caption here...'}
+          {hashtags && (
+            <>
+              <br />
+              <span style={{ color: '#0A66C2' }}>{hashtags}</span>
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* Media */}
+      <div className="w-full aspect-video relative overflow-hidden" style={{ backgroundColor: '#f3f2ef' }}>
+        {mediaUrl ? (
+          isVideo ? (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-5xl">▶️</div>
+            </div>
+          ) : (
+            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
+          )
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${brandColor}15, #f3f2ef)` }}>
+            <ImageIcon size={40} style={{ color: '#0A66C2', opacity: 0.3 }} />
+          </div>
+        )}
+      </div>
+
+      {/* Social Proof */}
+      <div className="px-4 py-2 text-xs" style={{ color: '#666', borderTop: '1px solid #e0e0e0' }}>
+        👍😍🎉 342 reactions • 28 comments
+      </div>
+
+      {/* Action Buttons */}
+      <div className="px-4 py-2 flex items-center justify-around text-xs font-semibold" style={{ color: '#65676b', borderTop: '1px solid #e0e0e0' }}>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">👍 Like</button>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">💬 Comment</button>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">🔄 Repost</button>
+        <button className="flex items-center gap-2 flex-1 py-2 hover:bg-gray-100 rounded justify-center">📤 Send</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── X (TWITTER) PREVIEW ──────────────────────────────────
+function XPreview({
+  caption,
+  hashtags,
+  mediaUrl,
+  brandName,
+  brandColor,
+}: {
+  caption: string;
+  hashtags: string;
+  mediaUrl: string | null;
+  brandName: string;
+  brandColor: string;
+}) {
+  const isVideo = mediaUrl?.startsWith('data:video/');
+  const profileInitial = (brandName || 'B').charAt(0).toUpperCase();
+
+  return (
+    <div className="w-full max-w-[500px] mx-auto rounded-xl overflow-hidden" style={{
+      backgroundColor: '#000',
+      border: '1px solid #2f3336',
+    }}>
+      {/* Header */}
+      <div className="flex items-start justify-between px-4 py-3">
+        <div className="flex items-start gap-3 flex-1">
+          <div
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+            style={{ backgroundColor: brandColor || '#000' }}
+          >
+            {profileInitial}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold" style={{ color: '#e7e9ea' }}>
+              {brandName || 'Your Brand'}
+            </p>
+            <p className="text-xs" style={{ color: '#71767b' }}>
+              @{(brandName || 'yourbrand').toLowerCase().replace(/\s+/g, '')} • 2h
+            </p>
+          </div>
+        </div>
+        <button style={{ color: '#71767b' }}>⋯</button>
+      </div>
+
+      {/* Caption */}
+      <div className="px-4 pb-3">
+        <p className="text-sm leading-relaxed" style={{ color: '#e7e9ea' }}>
+          {caption || 'Your post here...'}
+          {hashtags && (
+            <>
+              {' '}
+              <span style={{ color: '#1d9bf0' }}>{hashtags}</span>
+            </>
+          )}
+        </p>
+      </div>
+
+      {/* Media */}
+      {mediaUrl && (
+        <div className="mx-4 mb-3 rounded-2xl overflow-hidden aspect-video relative" style={{ backgroundColor: '#16181c' }}>
+          {isVideo ? (
+            <div className="absolute inset-0 bg-black flex items-center justify-center">
+              <div className="text-5xl">▶️</div>
+            </div>
+          ) : (
+            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
+          )}
+        </div>
+      )}
+
+      {/* Action Counts */}
+      <div className="px-4 py-3 flex items-center justify-around text-xs" style={{ color: '#71767b', borderTop: '1px solid #2f3336' }}>
+        <span>💬 12</span>
+        <span>🔄 8</span>
+        <span>♡ 124</span>
+        <span>📊 1.2K</span>
+        <span>↗️</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── SOCIAL PREVIEW WRAPPER ────────────────────────────────
 function SocialPreview({
   channel,
   caption,
@@ -61,229 +547,21 @@ function SocialPreview({
   brandName: string;
   brandColor: string;
 }) {
-  const config = CHANNEL_CONFIG[channel];
-  const isVideo = mediaUrl?.startsWith('data:video/');
-
-  // Platform-specific frame rendering
-  if (channel === 'Instagram') {
-    return (
-      <div className="w-full max-w-[375px] mx-auto overflow-hidden rounded-xl" style={{ backgroundColor: '#fff', border: '1px solid #dbdbdb' }}>
-        {/* IG Header */}
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: brandColor || '#E1306C' }}>
-            {brandName?.charAt(0) || 'B'}
-          </div>
-          <div>
-            <p className="text-xs font-semibold" style={{ color: '#262626' }}>{brandName || 'Your Brand'}</p>
-            <p className="text-[10px]" style={{ color: '#8e8e8e' }}>Sponsored</p>
-          </div>
-          <div className="ml-auto text-lg" style={{ color: '#262626' }}>...</div>
-        </div>
-        {/* IG Media - FULL WIDTH, NO BORDERS */}
-        <div className="w-full aspect-square relative overflow-hidden" style={{ backgroundColor: '#fafafa' }}>
-          {mediaUrl ? (
-            isVideo ? (
-              <div className="absolute inset-0 bg-black flex items-center justify-center">
-                <div className="text-6xl">▶️</div>
-              </div>
-            ) : (
-              <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
-            )
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${brandColor || '#E1306C'}40, ${brandColor || '#E1306C'}20)` }}>
-              <ImageIcon size={48} style={{ color: brandColor || '#E1306C', opacity: 0.4 }} />
-            </div>
-          )}
-        </div>
-        {/* IG Actions */}
-        <div className="px-4 pt-3 pb-1 flex items-center gap-4">
-          <span className="text-xl">♡</span>
-          <span className="text-xl">💬</span>
-          <span className="text-xl">📤</span>
-          <span className="ml-auto text-xl">🔖</span>
-        </div>
-        {/* IG Caption */}
-        <div className="px-4 pb-3">
-          <p className="text-xs leading-relaxed" style={{ color: '#262626' }}>
-            <span className="font-semibold">{brandName?.toLowerCase().replace(/\s/g, '') || 'yourbrand'} </span>
-            {caption || 'Your caption will appear here...'}
-          </p>
-          {hashtags && (
-            <p className="text-xs mt-1" style={{ color: '#00376b' }}>{hashtags}</p>
-          )}
-        </div>
-      </div>
-    );
+  switch (channel) {
+    case 'Instagram':
+      return <InstagramPreview caption={caption} hashtags={hashtags} mediaUrl={mediaUrl} brandName={brandName} brandColor={brandColor} />;
+    case 'TikTok':
+      return <TikTokPreview caption={caption} hashtags={hashtags} mediaUrl={mediaUrl} brandName={brandName} brandColor={brandColor} />;
+    case 'Facebook':
+      return <FacebookPreview caption={caption} hashtags={hashtags} mediaUrl={mediaUrl} brandName={brandName} brandColor={brandColor} />;
+    case 'LinkedIn':
+      return <LinkedInPreview caption={caption} hashtags={hashtags} mediaUrl={mediaUrl} brandName={brandName} brandColor={brandColor} />;
+    case 'X':
+      return <XPreview caption={caption} hashtags={hashtags} mediaUrl={mediaUrl} brandName={brandName} brandColor={brandColor} />;
   }
-
-  if (channel === 'TikTok') {
-    return (
-      <div className="w-full max-w-[280px] mx-auto overflow-hidden rounded-xl relative" style={{ backgroundColor: '#000', aspectRatio: '9/16', maxHeight: '500px' }}>
-        {/* TikTok Media - FULL SCREEN */}
-        {mediaUrl ? (
-          isVideo ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-6xl">▶️</div>
-            </div>
-          ) : (
-            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
-          )
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(180deg, ${brandColor}60, #000)` }}>
-            <Video size={48} style={{ color: '#fff', opacity: 0.4 }} />
-          </div>
-        )}
-        {/* TikTok Overlay - Right Side Actions */}
-        <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5">
-          <div className="flex flex-col items-center">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: brandColor || '#000', border: '2px solid #fff' }}>
-              {brandName?.charAt(0) || 'B'}
-            </div>
-            <div className="w-5 h-5 rounded-full bg-[#FE2C55] flex items-center justify-center -mt-2 text-white text-[10px] font-bold">+</div>
-          </div>
-          <div className="flex flex-col items-center text-white text-xs">
-            <span className="text-2xl">♡</span>
-            <span>24.5K</span>
-          </div>
-          <div className="flex flex-col items-center text-white text-xs">
-            <span className="text-2xl">💬</span>
-            <span>312</span>
-          </div>
-          <div className="flex flex-col items-center text-white text-xs">
-            <span className="text-2xl">📤</span>
-            <span>Share</span>
-          </div>
-        </div>
-        {/* TikTok Bottom Caption */}
-        <div className="absolute left-3 right-16 bottom-6">
-          <p className="text-white text-xs font-semibold mb-1">@{brandName?.toLowerCase().replace(/\s/g, '') || 'yourbrand'}</p>
-          <p className="text-white text-xs leading-relaxed line-clamp-3">
-            {caption || 'Your caption here...'} {hashtags && <span style={{ color: '#8ee0ff' }}>{hashtags}</span>}
-          </p>
-          {/* Music bar */}
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-white text-[10px]">🎵</span>
-            <div className="overflow-hidden">
-              <p className="text-white text-[10px] whitespace-nowrap animate-pulse">Original Sound - {brandName || 'Your Brand'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (channel === 'LinkedIn') {
-    return (
-      <div className="w-full max-w-[500px] mx-auto overflow-hidden rounded-xl" style={{ backgroundColor: '#fff', border: '1px solid #e0e0e0' }}>
-        {/* LinkedIn Header */}
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: brandColor || '#0A66C2' }}>
-            {brandName?.charAt(0) || 'B'}
-          </div>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: '#000' }}>{brandName || 'Your Brand'}</p>
-            <p className="text-xs" style={{ color: '#666' }}>1,234 followers</p>
-            <p className="text-xs" style={{ color: '#666' }}>Just now · 🌐</p>
-          </div>
-        </div>
-        {/* LinkedIn Caption */}
-        <div className="px-4 pb-3">
-          <p className="text-sm leading-relaxed" style={{ color: '#000' }}>
-            {caption || 'Your professional caption here...'}
-          </p>
-          {hashtags && (
-            <p className="text-sm mt-2" style={{ color: '#0A66C2' }}>{hashtags}</p>
-          )}
-        </div>
-        {/* LinkedIn Media */}
-        <div className="w-full aspect-video relative overflow-hidden" style={{ backgroundColor: '#f3f2ef' }}>
-          {mediaUrl ? (
-            isVideo ? (
-              <div className="absolute inset-0 bg-black flex items-center justify-center">
-                <div className="text-5xl">▶️</div>
-              </div>
-            ) : (
-              <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
-            )
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${brandColor || '#0A66C2'}20, #f3f2ef)` }}>
-              <ImageIcon size={40} style={{ color: '#0A66C2', opacity: 0.3 }} />
-            </div>
-          )}
-        </div>
-        {/* LinkedIn Actions */}
-        <div className="px-4 py-3 flex items-center justify-around text-xs" style={{ color: '#666', borderTop: '1px solid #e0e0e0' }}>
-          <span>👍 Like</span>
-          <span>💬 Comment</span>
-          <span>🔄 Repost</span>
-          <span>📤 Send</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Facebook & X (generic card)
-  return (
-    <div className="w-full max-w-[500px] mx-auto overflow-hidden rounded-xl" style={{ backgroundColor: channel === 'X' ? '#000' : '#fff', border: channel === 'X' ? '1px solid #2f3336' : '1px solid #e0e0e0' }}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: brandColor || config.color }}>
-          {brandName?.charAt(0) || 'B'}
-        </div>
-        <div>
-          <p className="text-sm font-semibold" style={{ color: channel === 'X' ? '#e7e9ea' : '#050505' }}>{brandName || 'Your Brand'}</p>
-          <p className="text-xs" style={{ color: channel === 'X' ? '#71767b' : '#65676b' }}>
-            {channel === 'X' ? `@${brandName?.toLowerCase().replace(/\s/g, '') || 'yourbrand'} · Just now` : 'Just now · 🌐'}
-          </p>
-        </div>
-      </div>
-      {/* Caption */}
-      <div className="px-4 pb-3">
-        <p className="text-sm leading-relaxed" style={{ color: channel === 'X' ? '#e7e9ea' : '#050505' }}>
-          {caption || 'Your caption here...'}
-        </p>
-        {hashtags && (
-          <p className="text-sm mt-1" style={{ color: channel === 'X' ? '#1d9bf0' : '#0064d1' }}>{hashtags}</p>
-        )}
-      </div>
-      {/* Media */}
-      <div className="mx-4 mb-3 rounded-xl overflow-hidden aspect-video relative" style={{ backgroundColor: channel === 'X' ? '#16181c' : '#f0f2f5' }}>
-        {mediaUrl ? (
-          isVideo ? (
-            <div className="absolute inset-0 bg-black flex items-center justify-center">
-              <div className="text-5xl">▶️</div>
-            </div>
-          ) : (
-            <img src={mediaUrl} alt="Post" className="absolute inset-0 w-full h-full object-cover" />
-          )
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${brandColor || config.color}20, transparent)` }}>
-            <ImageIcon size={40} style={{ color: config.color, opacity: 0.3 }} />
-          </div>
-        )}
-      </div>
-      {/* Actions */}
-      <div className="px-4 py-3 flex items-center justify-around text-xs" style={{ color: channel === 'X' ? '#71767b' : '#65676b', borderTop: channel === 'X' ? '1px solid #2f3336' : '1px solid #e0e0e0' }}>
-        {channel === 'X' ? (
-          <>
-            <span>💬 12</span>
-            <span>🔄 8</span>
-            <span>♡ 124</span>
-            <span>📊 1.2K</span>
-          </>
-        ) : (
-          <>
-            <span>👍 Like</span>
-            <span>💬 Comment</span>
-            <span>📤 Share</span>
-          </>
-        )}
-      </div>
-    </div>
-  );
 }
 
-// ─── MAIN PAGE COMPONENT ─────────────────────────────────
+// ─── MAIN PAGE COMPONENT ──────────────────────────────────
 export default function MediaPage() {
   // Create Post State
   const [uploadedFile, setUploadedFile] = useState<string | null>(null);
@@ -302,6 +580,7 @@ export default function MediaPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [aiTone, setAiTone] = useState('');
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Saving State
   const [isSaving, setIsSaving] = useState(false);
@@ -363,9 +642,12 @@ export default function MediaPage() {
       if (res.ok) {
         const data = await res.json();
         setPosts(Array.isArray(data) ? data : data.posts || []);
+      } else {
+        throw new Error(`Failed to fetch posts: ${res.status}`);
       }
     } catch (err) {
       console.error('Failed to fetch posts', err);
+      setError('Unable to load content library');
     } finally {
       setIsLoadingPosts(false);
     }
@@ -432,7 +714,6 @@ export default function MediaPage() {
       setUploadedFile(e.target?.result as string);
       setUploadedFileName(file.name);
       setError(null);
-      // Auto-detect content type
       if (file.type.startsWith('video/')) {
         setContentType('video');
       }
@@ -469,6 +750,7 @@ export default function MediaPage() {
       setIsGenerating(true);
       setAiMode(mode);
       setError(null);
+      setAiError(null);
 
       const res = await fetch('/api/ai/edit', {
         method: 'POST',
@@ -485,7 +767,10 @@ export default function MediaPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to generate AI content');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `AI generation failed (${res.status})`);
+      }
 
       const data = await res.json();
       const result = data.result;
@@ -508,7 +793,9 @@ export default function MediaPage() {
       );
       setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI generation failed');
+      const errorMessage = err instanceof Error ? err.message : 'AI generation failed. Please try again.';
+      setAiError(errorMessage);
+      console.error('AI Edit error:', err);
     } finally {
       setIsGenerating(false);
     }
@@ -547,7 +834,10 @@ export default function MediaPage() {
             mediaUrls: uploadedFile ? [uploadedFile] : [],
           }),
         });
-        if (!res.ok) throw new Error(`Failed to save for ${channel}`);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || `Failed to save for ${channel}`);
+        }
       }
 
       setSuccess(
@@ -568,10 +858,13 @@ export default function MediaPage() {
       setScheduledTime('09:00');
       setAiSuggestions([]);
       setAiTone('');
+      setAiError(null);
       await fetchPosts();
       setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save post');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save post';
+      setError(errorMessage);
+      console.error('Save post error:', err);
     } finally {
       setIsSaving(false);
     }
@@ -582,20 +875,26 @@ export default function MediaPage() {
     if (!selectedPost) return;
     try {
       setIsSaving(true);
+      setError(null);
       const fullContent = `${editingCaption}\n\n${editingHashtags}`;
       const res = await fetch('/api/posts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: selectedPost.id, content: fullContent, status: selectedPost.status }),
       });
-      if (!res.ok) throw new Error('Failed to update');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to update post');
+      }
       setSuccess('Post updated!');
       setIsEditingPost(false);
       setSelectedPost(null);
       await fetchPosts();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update post');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update post';
+      setError(errorMessage);
+      console.error('Update post error:', err);
     } finally {
       setIsSaving(false);
     }
@@ -603,17 +902,25 @@ export default function MediaPage() {
 
   // ─── Delete Post ────────────────────────────────────────
   const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) return;
     try {
       const res = await fetch('/api/posts', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: postId }),
       });
-      if (!res.ok) throw new Error('Failed to delete');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to delete post');
+      }
       setSelectedPost(null);
       await fetchPosts();
+      setSuccess('Post deleted');
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete post';
+      setError(errorMessage);
+      console.error('Delete post error:', err);
     }
   };
 
@@ -777,6 +1084,12 @@ export default function MediaPage() {
                   <span className="text-xs" style={{ color: 'var(--text3)' }}>Powered by your Brand DNA</span>
                 </div>
 
+                {aiError && (
+                  <div className="p-3 rounded-lg text-xs" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid var(--red)' }}>
+                    {aiError}
+                  </div>
+                )}
+
                 {/* Main AI Button */}
                 <button
                   onClick={() => handleAIEdit('full')}
@@ -872,7 +1185,7 @@ export default function MediaPage() {
               )}
 
               {/* Social Preview */}
-              <div className="rounded-xl p-4" style={{ backgroundColor: 'var(--bg3)', border: '1px solid var(--border)' }}>
+              <div className="rounded-xl p-6 flex items-center justify-center" style={{ backgroundColor: 'var(--bg2)', border: '1px solid var(--border)', minHeight: '400px' }}>
                 <SocialPreview
                   channel={previewChannel}
                   caption={caption}
@@ -1038,30 +1351,47 @@ export default function MediaPage() {
                       setEditingHashtags(post.content?.split('\n\n').slice(1).join('\n\n') || '');
                       setIsEditingPost(false);
                     }}
-                    className="card overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                    className="card overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
                   >
-                    {/* Thumbnail */}
-                    <div className="h-36 relative overflow-hidden rounded-t-lg" style={{
-                      backgroundColor: chConfig?.color ? `${chConfig.color}15` : 'var(--bg3)',
-                      backgroundImage: post.mediaUrls?.[0]?.startsWith('data:') ? `url(${post.mediaUrls[0]})` : undefined,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}>
+                    {/* Thumbnail with Image Preview */}
+                    <div
+                      className="h-40 relative overflow-hidden rounded-t-lg bg-cover bg-center"
+                      style={{
+                        backgroundColor: chConfig?.color ? `${chConfig.color}15` : 'var(--bg3)',
+                        backgroundImage: post.mediaUrls?.[0] ? `url(${post.mediaUrls[0]})` : undefined,
+                      }}
+                    >
                       {!post.mediaUrls?.[0] && (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <ImageIcon size={32} style={{ color: chConfig?.color || 'var(--text3)', opacity: 0.3 }} />
+                          <ImageIcon size={40} style={{ color: chConfig?.color || 'var(--text3)', opacity: 0.2 }} />
                         </div>
                       )}
-                      <div className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: chConfig?.color || 'var(--text3)' }}>
-                        {chConfig?.emoji} {post.platform}
+
+                      {/* Platform Badge */}
+                      <div className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-semibold text-white flex items-center gap-1" style={{ backgroundColor: chConfig?.color || 'var(--text3)' }}>
+                        <span>{chConfig?.emoji}</span>
+                        <span className="hidden sm:inline">{post.platform}</span>
                       </div>
+
+                      {/* Status Badge */}
                       <div className={`absolute bottom-2 left-2 tag ${getStatusColor(post.status)} text-xs`}>
                         {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                       </div>
+
+                      {/* Overlay on Hover */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Eye size={24} style={{ color: '#fff' }} />
+                      </div>
                     </div>
+
+                    {/* Card Content */}
                     <div className="p-4 space-y-2">
-                      <h3 className="font-semibold text-sm line-clamp-1" style={{ color: 'var(--text)' }}>{post.title}</h3>
-                      <p className="text-xs line-clamp-2" style={{ color: 'var(--text3)' }}>{post.content?.split('\n\n')[0]}</p>
+                      <h3 className="font-semibold text-sm line-clamp-1" style={{ color: 'var(--text)' }}>
+                        {post.title}
+                      </h3>
+                      <p className="text-xs line-clamp-2" style={{ color: 'var(--text3)' }}>
+                        {post.content?.split('\n\n')[0] || 'No caption'}
+                      </p>
                       {(post.scheduledAt || post.publishedAt || post.createdAt) && (
                         <p className="text-[10px]" style={{ color: 'var(--text3)' }}>
                           {post.publishedAt ? `Published ${new Date(post.publishedAt).toLocaleDateString()}` :
@@ -1101,8 +1431,7 @@ export default function MediaPage() {
             </div>
 
             {/* Social Preview in Modal */}
-            <div className="mb-6 p-4 rounded-xl" style={{ backgroundColor: 'var(--bg3)' }}>
-              <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text2)' }}>Social Preview</p>
+            <div className="mb-6 p-6 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--bg2)', border: '1px solid var(--border)', minHeight: '400px' }}>
               <SocialPreview
                 channel={selectedPost.platform as Channel}
                 caption={editingCaption}
@@ -1134,7 +1463,7 @@ export default function MediaPage() {
             ) : (
               <div className="flex gap-3">
                 <button onClick={() => setIsEditingPost(true)} className="btn btn-secondary flex-1">Edit</button>
-                <button onClick={() => handleDeletePost(selectedPost.id)} className="btn btn-secondary" style={{ color: 'var(--red)' }}>
+                <button onClick={() => handleDeletePost(selectedPost.id)} className="btn" style={{ color: 'var(--red)', border: '1px solid var(--red)' }}>
                   <Trash2 size={16} />
                 </button>
                 <button onClick={() => setSelectedPost(null)} className="btn btn-primary flex-1">Close</button>
