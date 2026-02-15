@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Sparkles, Loader2, CheckCircle, Search } from 'lucide-react';
 
 interface BrandState {
   businessName: string;
@@ -67,7 +67,9 @@ export default function BrandPage() {
   const [state, setState] = useState<BrandState>(emptyState);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [researching, setResearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [hasData, setHasData] = useState(false);
 
   // Fetch brand data on mount
@@ -143,6 +145,7 @@ export default function BrandPage() {
     try {
       setSaving(true);
       setError(null);
+      setSuccessMessage(null);
 
       // Map state fields to API fields
       const payload = {
@@ -194,12 +197,81 @@ export default function BrandPage() {
       }
 
       setHasData(true);
+      setSuccessMessage('Brand profile saved successfully!');
+      setTimeout(() => setSuccessMessage(null), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save brand data');
     } finally {
       setSaving(false);
     }
   }, [state]);
+
+  const autoResearchBrand = useCallback(async () => {
+    try {
+      setResearching(true);
+      setError(null);
+      setSuccessMessage(null);
+
+      if (!state.businessName || !state.industry || !state.website) {
+        setError('Please fill in Business Name, Industry, and Website before researching.');
+        return;
+      }
+
+      const response = await fetch('/api/brand/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: state.businessName,
+          industry: state.industry,
+          website: state.website,
+          location: state.location,
+        }),
+      });
+
+      if (response.status === 500) {
+        throw new Error('Research service temporarily unavailable. Please try again later.');
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to research brand');
+      }
+
+      const data = await response.json();
+      const research = data.research;
+
+      // Auto-fill form with research data
+      setState((prev) => ({
+        ...prev,
+        brandStory: research.brandStory || prev.brandStory,
+        primaryColor: research.primaryColor || prev.primaryColor,
+        secondaryColor: research.secondaryColor || prev.secondaryColor,
+        accentColor: research.accentColor || prev.accentColor,
+        ageRanges: research.targetAudience?.ageRanges || prev.ageRanges,
+        genderMale: research.targetAudience?.genderMale ?? prev.genderMale,
+        incomeLevel: research.targetAudience?.incomeLevel || prev.incomeLevel,
+        interests: research.targetAudience?.interests || prev.interests,
+        playfulProfessional: research.personality?.playfulProfessional ?? prev.playfulProfessional,
+        boldSubtle: research.personality?.boldSubtle ?? prev.boldSubtle,
+        modernClassic: research.personality?.modernClassic ?? prev.modernClassic,
+        friendlyAuthoritative: research.personality?.friendlyAuthoritative ?? prev.friendlyAuthoritative,
+        innovativeTraditional: research.personality?.innovativeTraditional ?? prev.innovativeTraditional,
+        formality: research.voiceSettings?.formality ?? prev.formality,
+        humor: research.voiceSettings?.humor ?? prev.humor,
+        enthusiasm: research.voiceSettings?.enthusiasm ?? prev.enthusiasm,
+        emojiUsage: research.voiceSettings?.emojiUsage || prev.emojiUsage,
+        competitors: research.competitors || prev.competitors,
+        usp: research.usp || prev.usp,
+        maturity: research.maturity ?? prev.maturity,
+        direction: research.direction ?? prev.direction,
+      }));
+
+      setSuccessMessage('Brand profile auto-filled from research! Review and amend below.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to research brand');
+    } finally {
+      setResearching(false);
+    }
+  }, [state.businessName, state.industry, state.website, state.location]);
 
   const handleInputChange = (field: keyof BrandState, value: any) => {
     setState((prev) => ({ ...prev, [field]: value }));
@@ -302,12 +374,91 @@ export default function BrandPage() {
           </div>
         )}
 
+        {successMessage && (
+          <div className="mb-6 p-4 rounded-lg border flex items-center gap-2" style={{ backgroundColor: '#dcfce7', borderColor: '#86efac', color: '#166534' }}>
+            <CheckCircle size={20} />
+            <span>{successMessage}</span>
+          </div>
+        )}
+
         {!hasData && !loading && (
           <div className="mb-8 p-6 rounded-lg border text-center" style={{ backgroundColor: 'var(--bg2)', borderColor: 'var(--border)', color: 'var(--text2)' }}>
             <p className="text-sm mb-4">Setting up your brand profile...</p>
-            <p className="text-xs">Start by filling in your business information below</p>
+            <p className="text-xs">Fill in your basic info below, then use Auto-Research to fill the rest automatically</p>
           </div>
         )}
+
+        {/* Auto-Research Section */}
+        <div className="mb-8 p-6 rounded-lg border" style={{ backgroundColor: 'var(--accent-bg)', borderColor: 'var(--border)' }}>
+          <div className="flex flex-col md:flex-row md:items-end gap-6">
+            <div className="flex-1">
+              <h3 className="section-title mb-2">Quick Setup</h3>
+              <p style={{ color: 'var(--text2)' }} className="text-sm mb-4">
+                Enter your basic info, then click Auto-Research to instantly fill your brand profile using web research.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="form-label">Business Name</label>
+                  <input
+                    type="text"
+                    value={state.businessName}
+                    onChange={(e) => handleInputChange('businessName', e.target.value)}
+                    placeholder="e.g., Acme Corp"
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Industry</label>
+                  <select
+                    value={state.industry}
+                    onChange={(e) => handleInputChange('industry', e.target.value)}
+                    className="form-input"
+                  >
+                    <option>Food & Beverage</option>
+                    <option>Fashion</option>
+                    <option>Tech</option>
+                    <option>Health</option>
+                    <option>Finance</option>
+                    <option>Real Estate</option>
+                    <option>Education</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Website</label>
+                  <input
+                    type="url"
+                    value={state.website}
+                    onChange={(e) => handleInputChange('website', e.target.value)}
+                    placeholder="https://example.com"
+                    className="form-input"
+                  />
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={autoResearchBrand}
+              disabled={researching || !state.businessName || !state.industry || !state.website}
+              style={{
+                background: researching ? 'var(--bg2)' : 'var(--gradient)',
+                color: 'white',
+              }}
+              className="btn btn-primary whitespace-nowrap h-fit disabled:opacity-50"
+            >
+              {researching ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Researching...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={18} />
+                  Auto-Research
+                </>
+              )}
+            </button>
+          </div>
+        </div>
 
         {/* Brand Sliders */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -373,6 +524,7 @@ export default function BrandPage() {
                 value={state.businessName}
                 onChange={(e) => handleInputChange('businessName', e.target.value)}
                 className="form-input"
+                placeholder="e.g., Acme Corp"
               />
             </div>
             <div>
@@ -408,6 +560,7 @@ export default function BrandPage() {
                 value={state.location}
                 onChange={(e) => handleInputChange('location', e.target.value)}
                 className="form-input"
+                placeholder="e.g., San Francisco, CA"
               />
             </div>
             <div className="md:col-span-2">
@@ -417,6 +570,7 @@ export default function BrandPage() {
                 value={state.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 className="form-input"
+                placeholder="https://example.com"
               />
             </div>
           </div>
@@ -644,12 +798,12 @@ export default function BrandPage() {
                   placeholder="#000000"
                   className="form-input flex-1"
                 />
-                <div
-                  className="w-12 h-10 rounded border"
-                  style={{
-                    backgroundColor: state.primaryColor,
-                    borderColor: 'var(--border)',
-                  }}
+                <input
+                  type="color"
+                  value={state.primaryColor}
+                  onChange={(e) => handleInputChange('primaryColor', e.target.value)}
+                  className="w-12 h-10 rounded border cursor-pointer"
+                  style={{ borderColor: 'var(--border)' }}
                 />
               </div>
             </div>
@@ -663,12 +817,12 @@ export default function BrandPage() {
                   placeholder="#000000"
                   className="form-input flex-1"
                 />
-                <div
-                  className="w-12 h-10 rounded border"
-                  style={{
-                    backgroundColor: state.secondaryColor,
-                    borderColor: 'var(--border)',
-                  }}
+                <input
+                  type="color"
+                  value={state.secondaryColor}
+                  onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
+                  className="w-12 h-10 rounded border cursor-pointer"
+                  style={{ borderColor: 'var(--border)' }}
                 />
               </div>
             </div>
@@ -682,12 +836,12 @@ export default function BrandPage() {
                   placeholder="#000000"
                   className="form-input flex-1"
                 />
-                <div
-                  className="w-12 h-10 rounded border"
-                  style={{
-                    backgroundColor: state.accentColor,
-                    borderColor: 'var(--border)',
-                  }}
+                <input
+                  type="color"
+                  value={state.accentColor}
+                  onChange={(e) => handleInputChange('accentColor', e.target.value)}
+                  className="w-12 h-10 rounded border cursor-pointer"
+                  style={{ borderColor: 'var(--border)' }}
                 />
               </div>
             </div>
@@ -696,15 +850,15 @@ export default function BrandPage() {
           {/* Color Preview */}
           <div className="flex gap-3 h-16">
             <div
-              className="flex-1 rounded"
+              className="flex-1 rounded shadow-sm transition-transform hover:scale-105"
               style={{ backgroundColor: state.primaryColor }}
             />
             <div
-              className="flex-1 rounded"
+              className="flex-1 rounded shadow-sm transition-transform hover:scale-105"
               style={{ backgroundColor: state.secondaryColor }}
             />
             <div
-              className="flex-1 rounded"
+              className="flex-1 rounded shadow-sm transition-transform hover:scale-105"
               style={{ backgroundColor: state.accentColor }}
             />
           </div>
@@ -774,13 +928,20 @@ export default function BrandPage() {
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end mb-12">
+        <div className="flex justify-end gap-4 mb-12">
           <button
             onClick={saveBrandData}
             disabled={saving}
             className="btn btn-primary"
           >
-            {saving ? 'Saving...' : 'Save Profile'}
+            {saving ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save & Continue'
+            )}
           </button>
         </div>
       </div>
