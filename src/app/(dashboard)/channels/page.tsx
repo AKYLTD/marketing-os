@@ -29,9 +29,11 @@ const PLATFORM_COLORS: { [key: string]: string } = {
   facebook: '#1877F2',
   linkedin: '#0A66C2',
   twitter: '#000000',
+  'x (twitter)': '#000000',
   youtube: '#FF0000',
   pinterest: '#E60023',
   email: '#999999',
+  'google business': '#4285F4',
 };
 
 function ChannelCard({
@@ -209,8 +211,27 @@ export default function ChannelsPage() {
     try {
       setLoading(true);
       const res = await fetch('/api/channels');
-      if (res.ok) {
-        setChannels(await res.json());
+
+      if (res.status === 500) {
+        // Database not ready - show empty state
+        setChannels([]);
+        setError(null);
+      } else if (res.ok) {
+        const data = await res.json();
+        // Extract channels from wrapper object and map DB fields to interface
+        const rawChannels = data.channels || [];
+        const mappedChannels = rawChannels.map((ch: any) => ({
+          id: ch.id,
+          platform: ch.platform,
+          handle: ch.handle,
+          status: ch.isActive ? 'connected' : 'disconnected',
+          followers: ch.followers || 0,
+          postsThisMonth: 0,
+          engagementRate: 0,
+          lastSyncedAt: ch.createdAt ? new Date(ch.createdAt).toLocaleDateString() : 'Never',
+          brandColor: PLATFORM_COLORS[ch.platform?.toLowerCase()] || '#000000',
+        }));
+        setChannels(mappedChannels);
         setError(null);
       } else {
         setError('Failed to fetch channels');
@@ -229,8 +250,10 @@ export default function ChannelsPage() {
 
   const handleDisconnect = async (channelId: string) => {
     try {
-      const res = await fetch(`/api/channels/${channelId}`, {
+      const res = await fetch('/api/channels', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: channelId }),
       });
       if (res.ok) {
         setChannels(channels.filter((ch) => ch.id !== channelId));
@@ -248,15 +271,18 @@ export default function ChannelsPage() {
         body: JSON.stringify({
           platform,
           handle: `@new_${platform.toLowerCase()}`,
-          status: 'pending',
+          displayName: platform,
         }),
       });
-      if (res.ok) {
+      if (res.status === 500) {
+        setError('Database not available. Please try again later.');
+      } else if (res.ok) {
         await fetchChannels();
         setIsAddChannelModalOpen(false);
       }
     } catch (e) {
       console.error(e);
+      setError('Error adding channel');
     }
   };
 

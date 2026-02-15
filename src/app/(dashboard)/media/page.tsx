@@ -1,217 +1,405 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Eye, Edit3, Plus, X, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Upload, X, Trash2, Clock, Send, Loader2, ChevronDown, Copy, Check } from 'lucide-react';
 
-interface MediaItem {
+type Channel = 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn' | 'X';
+type ContentType = 'image' | 'video' | 'reel' | 'story' | 'carousel';
+type PostStatus = 'draft' | 'scheduled' | 'published';
+
+interface Post {
   id: string;
-  channel: 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn';
-  status: 'Draft' | 'Review' | 'Approved' | 'Published' | 'Scheduled';
   title: string;
-  caption: string;
-  gradient: string;
-  type: 'image' | 'video' | 'story' | 'reel';
-  views?: number;
-  likes?: number;
-  comments?: number;
-  postedDate?: string;
-  scheduledDate?: string;
+  content: string;
+  platform: string;
+  status: PostStatus;
+  scheduledAt?: string;
+  publishedAt?: string;
+  reach?: number;
+  impressions?: number;
+  engagement?: number;
+  clicks?: number;
+  mediaUrls?: string[];
+  createdAt?: string;
 }
 
+interface CreatePost {
+  uploadedFile: string | null;
+  uploadedFileName: string;
+  topicText: string;
+  selectedChannels: Channel[];
+  contentType: ContentType;
+  caption: string;
+  hashtags: string;
+  scheduleMode: 'now' | 'schedule';
+  scheduledDate: string;
+  scheduledTime: string;
+}
+
+const CHANNEL_EMOJIS: Record<Channel, string> = {
+  Instagram: '📷',
+  TikTok: '🎵',
+  Facebook: 'f',
+  LinkedIn: '🔗',
+  X: '𝕏',
+};
+
+const CHANNEL_COLORS: Record<Channel, string> = {
+  Instagram: '#E1306C',
+  TikTok: '#000000',
+  Facebook: '#1877F2',
+  LinkedIn: '#0A66C2',
+  X: '#000000',
+};
+
 export default function MediaPage() {
-  const [filter, setFilter] = useState<'All' | 'Images' | 'Videos' | 'Stories' | 'Reels'>('All');
-  const [statusFilter, setStatusFilter] = useState<string>('All Statuses');
-  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
-  const [suggestedCaptions, setSuggestedCaptions] = useState<string[]>([]);
-  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Create Post State
+  const [uploadedFile, setUploadedFile] = useState<string | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [topicText, setTopicText] = useState('');
+  const [selectedChannels, setSelectedChannels] = useState<Channel[]>(['Instagram']);
+  const [contentType, setContentType] = useState<ContentType>('image');
+  const [caption, setCaption] = useState('');
+  const [hashtags, setHashtags] = useState('');
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'schedule'>('now');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('09:00');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Content Library State
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
+  const [filterChannel, setFilterChannel] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<PostStatus | 'all'>('all');
+  const [filterContentType, setFilterContentType] = useState<string>('all');
+  const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+
+  // Detail Modal State
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [editingCaption, setEditingCaption] = useState('');
+  const [editingHashtags, setEditingHashtags] = useState('');
+  const [isEditingPost, setIsEditingPost] = useState(false);
+
+  // UI State
   const [error, setError] = useState<string | null>(null);
-  const [editingCaption, setEditingCaption] = useState<string>('');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newPost, setNewPost] = useState({
-    title: '',
-    caption: '',
-    channel: 'Instagram' as const,
-    type: 'image' as const,
-    status: 'Draft' as const,
-  });
+  const [success, setSuccess] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragZoneRef = useRef<HTMLDivElement>(null);
 
   // Fetch posts on mount
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/posts');
-
-        if (response.ok) {
-          const data = await response.json();
-          setMediaItems(Array.isArray(data) ? data : data.posts || []);
-        } else {
-          throw new Error('Failed to fetch posts');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load posts');
-        setMediaItems([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPosts();
   }, []);
 
-  const getChannelBadge = (channel: string) => {
-    const badges: Record<string, string> = {
-      Instagram: '📷',
-      TikTok: '🎵',
-      Facebook: 'f',
-      LinkedIn: 'in',
-    };
-    return badges[channel] || channel;
-  };
+  // Filter posts
+  useEffect(() => {
+    let filtered = posts;
 
-  const getStatusColor = (status: string): string => {
-    switch (status) {
-      case 'Draft':
-        return 'tag-amber';
-      case 'Review':
-        return 'tag-blue';
-      case 'Approved':
-        return 'tag-green';
-      case 'Published':
-        return 'tag-green';
-      case 'Scheduled':
-        return 'tag-amber';
-      default:
-        return 'tag-blue';
+    if (filterChannel !== 'all') {
+      filtered = filtered.filter(p => p.platform.toLowerCase() === filterChannel.toLowerCase());
     }
-  };
 
-  const filteredMedia = mediaItems.filter((item) => {
-    const typeMatch =
-      filter === 'All' ||
-      (filter === 'Images' && item.type === 'image') ||
-      (filter === 'Videos' && item.type === 'video') ||
-      (filter === 'Stories' && item.type === 'story') ||
-      (filter === 'Reels' && item.type === 'reel');
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(p => p.status === filterStatus);
+    }
 
-    const statusMatch =
-      statusFilter === 'All Statuses' ||
-      item.status === statusFilter;
-
-    return typeMatch && statusMatch;
-  });
-
-  const handleSuggestCaptions = () => {
-    setSuggestedCaptions([
-      'Just baked perfection awaiting your tastebuds! Fresh from our ovens.',
-      'Craving something golden and delicious? We\'ve got you covered.',
-      'Every bite tells a story of craftsmanship, tradition, and love.',
-    ]);
-  };
-
-  const isEditableStatus = (status: string) => {
-    return status === 'Draft' || status === 'Review' || status === 'Scheduled';
-  };
-
-  const handleSaveCaption = async (postId: string) => {
-    try {
-      const response = await fetch(`/api/posts/${postId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ caption: editingCaption }),
+    if (filterContentType !== 'all') {
+      // Check if mediaUrls contains the content type indicator
+      const hasContentType = filtered.filter(p => {
+        const urls = p.mediaUrls || [];
+        return urls.some(url => url.includes(filterContentType));
       });
+      filtered = hasContentType;
+    }
+
+    setFilteredPosts(filtered);
+  }, [posts, filterChannel, filterStatus, filterContentType]);
+
+  const fetchPosts = async () => {
+    try {
+      setIsLoadingPosts(true);
+      const response = await fetch('/api/posts');
 
       if (response.ok) {
-        setMediaItems(items =>
-          items.map(item =>
-            item.id === postId ? { ...item, caption: editingCaption } : item
-          )
-        );
-        if (selectedMedia?.id === postId) {
-          setSelectedMedia({ ...selectedMedia, caption: editingCaption });
-        }
+        const data = await response.json();
+        const postsList = Array.isArray(data) ? data : data.posts || [];
+        setPosts(postsList);
       } else {
-        setError('Failed to save caption');
+        setError('Failed to fetch posts');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save caption');
+      setError(err instanceof Error ? err.message : 'Failed to load posts');
+    } finally {
+      setIsLoadingPosts(false);
     }
   };
 
+  // Drag & Drop Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragZoneRef.current) {
+      dragZoneRef.current.style.borderColor = 'var(--accent)';
+      dragZoneRef.current.style.backgroundColor = 'var(--accent-bg)';
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragZoneRef.current) {
+      dragZoneRef.current.style.borderColor = 'var(--border)';
+      dragZoneRef.current.style.backgroundColor = 'transparent';
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragZoneRef.current) {
+      dragZoneRef.current.style.borderColor = 'var(--border)';
+      dragZoneRef.current.style.backgroundColor = 'transparent';
+    }
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      processFile(files[0]);
+    }
+  };
+
+  const processFile = (file: File) => {
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      setError('Only images and videos are allowed');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setUploadedFile(base64);
+      setUploadedFileName(file.name);
+      setError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files;
+    if (files && files.length > 0) {
+      processFile(files[0]);
+    }
+  };
+
+  // Channel Toggle
+  const toggleChannel = (channel: Channel) => {
+    setSelectedChannels(prev =>
+      prev.includes(channel)
+        ? prev.filter(c => c !== channel)
+        : [...prev, channel]
+    );
+  };
+
+  // Generate AI Caption
+  const handleGenerateWithAI = async () => {
+    if (!topicText.trim()) {
+      setError('Please enter a topic or description');
+      return;
+    }
+
+    if (selectedChannels.length === 0) {
+      setError('Please select at least one channel');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      setError(null);
+
+      const channelList = selectedChannels.join(', ');
+      const prompt = `Create a social media post for ${channelList}. Topic: ${topicText}. Generate an engaging caption with relevant hashtags. Format: Return the caption text followed by a new line, then the hashtags starting with #.`;
+
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: prompt }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate caption');
+
+      const data = await response.json();
+      const reply = data.reply || '';
+
+      // Parse the AI response: caption + hashtags
+      const parts = reply.split('\n');
+      let captionText = '';
+      let hashtagsText = '';
+
+      // Find where hashtags start
+      let hashtagStartIdx = -1;
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i].trim().startsWith('#')) {
+          hashtagStartIdx = i;
+          break;
+        }
+      }
+
+      if (hashtagStartIdx > -1) {
+        captionText = parts.slice(0, hashtagStartIdx).join('\n').trim();
+        hashtagsText = parts.slice(hashtagStartIdx).join(' ').trim();
+      } else {
+        captionText = reply.trim();
+      }
+
+      setCaption(captionText);
+      setHashtags(hashtagsText);
+      setSuccess('AI generated your caption!');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate caption');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // Save/Publish Post
+  const handleSavePost = async (status: PostStatus) => {
+    if (!caption.trim()) {
+      setError('Please add a caption');
+      return;
+    }
+
+    if (selectedChannels.length === 0) {
+      setError('Please select at least one channel');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      const fullContent = `${caption}\n\n${hashtags}`;
+      const scheduledDateTime = status === 'scheduled' && scheduledDate && scheduledTime
+        ? new Date(`${scheduledDate}T${scheduledTime}`).toISOString()
+        : undefined;
+
+      // Save to each selected channel
+      for (const channel of selectedChannels) {
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: topicText || `Post ${new Date().toLocaleDateString()}`,
+            content: fullContent,
+            platform: channel,
+            status: status,
+            scheduledAt: scheduledDateTime,
+            mediaUrls: uploadedFile ? [uploadedFile] : [],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to save post for ${channel}`);
+        }
+      }
+
+      setSuccess(
+        status === 'scheduled'
+          ? `Post scheduled for ${scheduledDate} at ${scheduledTime}!`
+          : 'Post published successfully!'
+      );
+
+      // Reset form
+      setUploadedFile(null);
+      setUploadedFileName('');
+      setTopicText('');
+      setCaption('');
+      setHashtags('');
+      setScheduledDate('');
+      setScheduledTime('09:00');
+
+      // Refresh posts
+      await fetchPosts();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save post');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Update existing post
+  const handleUpdatePost = async () => {
+    if (!selectedPost) return;
+
+    try {
+      setIsSaving(true);
+      setError(null);
+
+      const fullContent = `${editingCaption}\n\n${editingHashtags}`;
+
+      const response = await fetch('/api/posts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedPost.id,
+          content: fullContent,
+          status: selectedPost.status,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update post');
+
+      setSuccess('Post updated successfully!');
+      setIsEditingPost(false);
+      setSelectedPost(null);
+      await fetchPosts();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update post');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete post
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Are you sure you want to delete this post?')) return;
 
     try {
-      const response = await fetch(`/api/posts/${postId}`, {
+      const response = await fetch('/api/posts', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: postId }),
       });
 
-      if (response.ok) {
-        setMediaItems(items => items.filter(item => item.id !== postId));
-        setSelectedMedia(null);
-      } else {
-        setError('Failed to delete post');
-      }
+      if (!response.ok) throw new Error('Failed to delete post');
+
+      setSuccess('Post deleted successfully!');
+      setSelectedPost(null);
+      await fetchPosts();
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete post');
     }
   };
 
-  const handleCreatePost = async () => {
-    if (!newPost.title.trim() || !newPost.caption.trim()) {
-      setError('Title and caption are required');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...newPost,
-          gradient: 'from-purple-600 to-pink-500',
-        }),
-      });
-
-      if (response.ok) {
-        const createdPost = await response.json();
-        setMediaItems([...mediaItems, createdPost]);
-        setShowCreateModal(false);
-        setNewPost({
-          title: '',
-          caption: '',
-          channel: 'Instagram',
-          type: 'image',
-          status: 'Draft',
-        });
-      } else {
-        setError('Failed to create post');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create post');
+  const getStatusColor = (status: PostStatus): string => {
+    switch (status) {
+      case 'draft':
+        return 'tag-amber';
+      case 'scheduled':
+        return 'tag-blue';
+      case 'published':
+        return 'tag-green';
+      default:
+        return 'tag-blue';
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
-        <div className="border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-            <h1 className="page-title">Media Studio</h1>
-            <p className="page-subtitle">
-              Create, edit, and preview your content across channels
-            </p>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-64">
-            <p style={{ color: 'var(--text2)' }}>Loading your media...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const getStatusLabel = (status: PostStatus): string => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
@@ -220,173 +408,616 @@ export default function MediaPage() {
         <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
           <h1 className="page-title">Media Studio</h1>
           <p className="page-subtitle">
-            Create, edit, and preview your content across channels
+            Create AI-powered content for all your channels
           </p>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+        {/* Error & Success Messages */}
         {error && (
-          <div className="mb-6 p-4 rounded-lg border" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }}>
-            {error}
+          <div className="flex items-center gap-3 p-4 rounded-lg border" style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            borderColor: 'var(--red)',
+            color: 'var(--red)',
+          }}>
+            <span>⚠️</span>
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-auto">
+              <X size={18} />
+            </button>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {(['All', 'Images', 'Videos', 'Stories', 'Reels'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setFilter(type)}
-                className={`btn btn-sm ${
-                  filter === type ? 'btn-primary' : 'btn-secondary'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
+        {success && (
+          <div className="flex items-center gap-3 p-4 rounded-lg border" style={{
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderColor: 'var(--green)',
+            color: 'var(--green)',
+          }}>
+            <span>✓</span>
+            <span>{success}</span>
+            <button onClick={() => setSuccess(null)} className="ml-auto">
+              <X size={18} />
+            </button>
           </div>
+        )}
 
+        {/* CREATE POST SECTION */}
+        <div className="card space-y-6" style={{ borderColor: 'var(--border)' }}>
           <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="form-input max-w-xs"
-            >
-              <option>All Statuses</option>
-              <option>Draft</option>
-              <option>Review</option>
-              <option>Approved</option>
-              <option>Published</option>
-              <option>Scheduled</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Empty State */}
-        {filteredMedia.length === 0 ? (
-          <div className="text-center py-12">
-            <p style={{ color: 'var(--text2)' }} className="mb-4">
-              {mediaItems.length === 0 ? 'No posts yet. Create your first post!' : 'No posts match your filters'}
+            <h2 className="section-title">Create New Post</h2>
+            <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '4px' }}>
+              Upload content, generate with AI, and publish in seconds
             </p>
           </div>
-        ) : (
-          /* Content Grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {filteredMedia.map((media) => (
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: Upload Area */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Upload Area */}
               <div
-                key={media.id}
-                className="card overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
-                onClick={() => {
-                  setSelectedMedia(media);
-                  setEditingCaption(media.caption);
+                ref={dragZoneRef}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors"
+                style={{
+                  borderColor: 'var(--border)',
+                  backgroundColor: 'var(--bg3)',
                 }}
               >
-                {/* Thumbnail */}
-                <div
-                  className={`relative h-40 bg-gradient-to-br ${media.gradient} flex items-center justify-center overflow-hidden`}
-                >
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                    <span className="text-4xl opacity-50">{media.type === 'video' ? '🎬' : '🖼️'}</span>
-                  </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
 
-                  {/* Channel Badge */}
-                  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur px-2 py-1 rounded text-xs font-semibold">
-                    {getChannelBadge(media.channel)} {media.channel}
+                {uploadedFile ? (
+                  <div className="space-y-4">
+                    <div className="relative inline-block">
+                      {uploadedFile.startsWith('data:video/') ? (
+                        <div className="w-40 h-40 bg-black rounded-lg flex items-center justify-center text-4xl">
+                          🎬
+                        </div>
+                      ) : (
+                        <img
+                          src={uploadedFile}
+                          alt="Upload preview"
+                          className="w-40 h-40 object-cover rounded-lg"
+                        />
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadedFile(null);
+                          setUploadedFileName('');
+                        }}
+                        className="absolute -top-2 -right-2 p-1 rounded-full"
+                        style={{ backgroundColor: 'var(--red)' }}
+                      >
+                        <X size={16} color="white" />
+                      </button>
+                    </div>
+                    <div>
+                      <p style={{ color: 'var(--text2)', fontWeight: 500 }}>
+                        {uploadedFileName}
+                      </p>
+                      <p style={{ color: 'var(--text3)', fontSize: '12px', marginTop: '4px' }}>
+                        Click to replace or drag another file
+                      </p>
+                    </div>
                   </div>
+                ) : (
+                  <div className="space-y-3">
+                    <Upload size={32} style={{ color: 'var(--accent)', margin: '0 auto' }} />
+                    <div>
+                      <p style={{ color: 'var(--text)', fontWeight: 500, marginBottom: '4px' }}>
+                        Drag & drop your image or video here
+                      </p>
+                      <p style={{ color: 'var(--text3)', fontSize: '12px' }}>
+                        or click to browse from your computer
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                  {/* Status Badge */}
-                  <div className={`absolute bottom-2 left-2 tag ${getStatusColor(media.status)}`}>
-                    {media.status}
-                  </div>
+              {/* Topic Input */}
+              <div>
+                <label className="form-label">Post Topic or Idea</label>
+                <textarea
+                  value={topicText}
+                  onChange={(e) => setTopicText(e.target.value)}
+                  placeholder="e.g., New sourdough bagels for spring menu, product launch announcement, team celebration"
+                  rows={3}
+                  className="form-input"
+                />
+              </div>
+
+              {/* Channel Selection */}
+              <div>
+                <label className="form-label">Select Channels</label>
+                <div className="flex flex-wrap gap-2">
+                  {(['Instagram', 'TikTok', 'Facebook', 'LinkedIn', 'X'] as const).map((ch) => (
+                    <button
+                      key={ch}
+                      onClick={() => toggleChannel(ch)}
+                      className={`px-3 py-2 rounded-lg border transition-all text-sm font-medium flex items-center gap-2 ${
+                        selectedChannels.includes(ch)
+                          ? 'border-transparent text-white'
+                          : 'border'
+                      }`}
+                      style={{
+                        backgroundColor: selectedChannels.includes(ch)
+                          ? CHANNEL_COLORS[ch]
+                          : 'var(--bg2)',
+                        borderColor: selectedChannels.includes(ch) ? CHANNEL_COLORS[ch] : 'var(--border)',
+                        color: selectedChannels.includes(ch) ? 'white' : 'var(--text)',
+                      }}
+                    >
+                      <span>{CHANNEL_EMOJIS[ch]}</span>
+                      {ch}
+                    </button>
+                  ))}
                 </div>
+              </div>
 
-                {/* Content */}
-                <div className="p-4">
-                  <h3 className="font-bold text-sm mb-2 line-clamp-2">{media.title}</h3>
-                  <p className="text-xs mb-3 line-clamp-2" style={{ color: 'var(--text3)' }}>
-                    {media.caption}
+              {/* Content Type */}
+              <div>
+                <label className="form-label">Content Type</label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {(['image', 'video', 'reel', 'story', 'carousel'] as const).map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setContentType(type)}
+                      className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
+                        contentType === type
+                          ? 'border-accent'
+                          : 'border'
+                      }`}
+                      style={{
+                        backgroundColor: contentType === type ? 'var(--accent-bg)' : 'var(--bg2)',
+                        borderColor: contentType === type ? 'var(--accent)' : 'var(--border)',
+                        color: contentType === type ? 'var(--accent)' : 'var(--text2)',
+                      }}
+                    >
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Generate Button & Preview */}
+            <div className="space-y-6">
+              {/* Generate with AI Button */}
+              <button
+                onClick={handleGenerateWithAI}
+                disabled={isGenerating || !topicText.trim()}
+                className="w-full btn btn-primary text-base font-semibold py-4 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{
+                  background: 'var(--gradient)',
+                  opacity: isGenerating || !topicText.trim() ? 0.5 : 1,
+                }}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    ✨ Generate with AI
+                  </>
+                )}
+              </button>
+
+              {/* Caption Preview */}
+              {caption && (
+                <div className="space-y-3 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg3)' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text2)' }}>
+                    AI Generated Caption
                   </p>
-
-                  {/* Engagement Row */}
-                  {media.status === 'Published' && (
-                    <div className="flex gap-3 mb-3 text-xs" style={{ color: 'var(--text2)' }}>
-                      <span>👁 {media.views || 0}</span>
-                      <span>❤️ {media.likes || 0}</span>
-                      <span>💬 {media.comments || 0}</span>
+                  <p style={{ color: 'var(--text)', fontSize: '13px', lineHeight: 1.5 }}>
+                    {caption}
+                  </p>
+                  {hashtags && (
+                    <div style={{ color: 'var(--accent)', fontSize: '13px', wordBreak: 'break-word' }}>
+                      {hashtags}
                     </div>
                   )}
+                </div>
+              )}
+            </div>
+          </div>
 
-                  {/* Date */}
-                  <p className="text-xs mb-4" style={{ color: 'var(--text2)' }}>
-                    {media.postedDate && `Posted: ${media.postedDate}`}
-                    {media.scheduledDate && `Scheduled: ${media.scheduledDate}`}
-                  </p>
+          {/* Editable Caption & Hashtags */}
+          {caption && (
+            <div className="space-y-4 border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+              <h3 className="section-title">Review & Edit</h3>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    {isEditableStatus(media.status) && (
-                      <button className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1">
-                        <Edit3 size={14} />
-                        Edit
-                      </button>
+              <div>
+                <label className="form-label">Caption</label>
+                <textarea
+                  value={caption}
+                  onChange={(e) => setCaption(e.target.value)}
+                  rows={4}
+                  className="form-input"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Hashtags</label>
+                <input
+                  type="text"
+                  value={hashtags}
+                  onChange={(e) => setHashtags(e.target.value)}
+                  placeholder="#hashtag #social #marketing"
+                  className="form-input"
+                />
+              </div>
+
+              {/* Schedule Options */}
+              <div className="space-y-4 p-4 rounded-lg" style={{ backgroundColor: 'var(--bg3)' }}>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    id="now"
+                    name="schedule"
+                    checked={scheduleMode === 'now'}
+                    onChange={() => setScheduleMode('now')}
+                  />
+                  <label htmlFor="now" style={{ color: 'var(--text)', cursor: 'pointer' }}>
+                    Post Now
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    type="radio"
+                    id="schedule"
+                    name="schedule"
+                    checked={scheduleMode === 'schedule'}
+                    onChange={() => setScheduleMode('schedule')}
+                  />
+                  <label htmlFor="schedule" style={{ color: 'var(--text)', cursor: 'pointer' }}>
+                    Schedule for Later
+                  </label>
+                </div>
+
+                {scheduleMode === 'schedule' && (
+                  <div className="grid grid-cols-2 gap-3 mt-4 ml-6">
+                    <input
+                      type="date"
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="form-input"
+                    />
+                    <input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleSavePost('draft')}
+                  disabled={isSaving}
+                  className="btn btn-secondary"
+                >
+                  Save as Draft
+                </button>
+                <button
+                  onClick={() =>
+                    handleSavePost(scheduleMode === 'schedule' ? 'scheduled' : 'published')
+                  }
+                  disabled={isSaving || (scheduleMode === 'schedule' && (!scheduledDate || !scheduledTime))}
+                  className="btn btn-primary"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Saving...
+                    </>
+                  ) : scheduleMode === 'schedule' ? (
+                    <>
+                      <Clock size={16} />
+                      Schedule Post
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Publish Now
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* CONTENT LIBRARY SECTION */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="section-title">Content Library</h2>
+            <p style={{ color: 'var(--text3)', fontSize: '13px', marginTop: '4px' }}>
+              {posts.length === 0
+                ? 'No posts yet. Create your first AI-powered post above!'
+                : `${posts.length} post${posts.length !== 1 ? 's' : ''} total`}
+            </p>
+          </div>
+
+          {/* Filters */}
+          {posts.length > 0 && (
+            <div className="flex flex-wrap gap-3">
+              <div>
+                <label className="form-label block mb-2">Channel</label>
+                <select
+                  value={filterChannel}
+                  onChange={(e) => setFilterChannel(e.target.value)}
+                  className="form-input"
+                >
+                  <option value="all">All Channels</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="linkedin">LinkedIn</option>
+                  <option value="x">X (Twitter)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label block mb-2">Status</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as any)}
+                  className="form-input"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="published">Published</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Posts Grid */}
+          {isLoadingPosts ? (
+            <div className="flex items-center justify-center py-12">
+              <div style={{ color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Loader2 size={18} className="animate-spin" />
+                Loading posts...
+              </div>
+            </div>
+          ) : filteredPosts.length === 0 ? (
+            <div className="text-center py-12">
+              <p style={{ color: 'var(--text2)' }}>
+                {posts.length === 0
+                  ? 'No posts yet. Create your first AI-powered post above!'
+                  : 'No posts match your filters'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredPosts.map((post) => (
+                <div
+                  key={post.id}
+                  onClick={() => {
+                    setSelectedPost(post);
+                    setEditingCaption(post.content?.split('\n\n')[0] || '');
+                    setEditingHashtags(post.content?.split('\n\n')[1] || '');
+                    setIsEditingPost(false);
+                  }}
+                  className="card overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  {/* Thumbnail */}
+                  <div
+                    className="h-40 flex items-center justify-center text-4xl relative"
+                    style={{
+                      backgroundColor: `hsl(${Math.random() * 360}, 70%, 85%)`,
+                      backgroundImage: post.mediaUrls?.[0]?.startsWith('data:')
+                        ? `url(${post.mediaUrls[0]})`
+                        : undefined,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                    }}
+                  >
+                    {!post.mediaUrls?.[0] && '📱'}
+
+                    {/* Channel Badge */}
+                    <div
+                      className="absolute top-2 right-2 px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 text-white"
+                      style={{ backgroundColor: CHANNEL_COLORS[post.platform as Channel] || 'var(--text3)' }}
+                    >
+                      {CHANNEL_EMOJIS[post.platform as Channel] || '📱'}
+                      {post.platform}
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className={`absolute bottom-2 left-2 tag ${getStatusColor(post.status)}`}>
+                      {getStatusLabel(post.status)}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4 space-y-3">
+                    <h3 className="font-semibold text-sm line-clamp-2" style={{ color: 'var(--text)' }}>
+                      {post.title}
+                    </h3>
+
+                    <p
+                      className="text-xs line-clamp-2"
+                      style={{ color: 'var(--text3)' }}
+                    >
+                      {post.content?.split('\n\n')[0]}
+                    </p>
+
+                    {/* Engagement Stats */}
+                    {post.status === 'published' && (post.reach || post.impressions || post.engagement) && (
+                      <div className="text-xs flex gap-4" style={{ color: 'var(--text2)' }}>
+                        {post.reach && <span>👁️ {post.reach}</span>}
+                        {post.impressions && <span>📊 {post.impressions}</span>}
+                        {post.engagement && <span>💬 {post.engagement}</span>}
+                      </div>
                     )}
-                    <button className="btn btn-sm btn-secondary flex-1 flex items-center justify-center gap-1">
-                      <Eye size={14} />
-                      View
+
+                    {/* Date */}
+                    {(post.publishedAt || post.scheduledAt) && (
+                      <p className="text-xs" style={{ color: 'var(--text3)' }}>
+                        {post.scheduledAt && `Scheduled: ${new Date(post.scheduledAt).toLocaleDateString()}`}
+                        {post.publishedAt && `Published: ${new Date(post.publishedAt).toLocaleDateString()}`}
+                      </p>
+                    )}
+
+                    <button
+                      className="w-full btn btn-secondary btn-sm mt-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedPost(post);
+                        setEditingCaption(post.content?.split('\n\n')[0] || '');
+                        setEditingHashtags(post.content?.split('\n\n')[1] || '');
+                        setIsEditingPost(false);
+                      }}
+                    >
+                      View & Edit
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Detail Modal */}
-      {selectedMedia && (
+      {/* POST DETAIL MODAL */}
+      {selectedPost && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-          onClick={() => setSelectedMedia(null)}
+          onClick={() => setSelectedPost(null)}
         >
           <div
             className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <h2 className="section-title">{selectedMedia.title}</h2>
-                <button
-                  onClick={() => setSelectedMedia(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X size={24} />
-                </button>
+            <div className="sticky top-0 flex items-center justify-between mb-6 p-6 border-b" style={{ borderColor: 'var(--border)' }}>
+              <h2 className="section-title">{selectedPost.title}</h2>
+              <button onClick={() => setSelectedPost(null)} className="p-1">
+                <X size={20} style={{ color: 'var(--text2)' }} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Status Info */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs mb-1" style={{ color: 'var(--text3)' }}>
+                    Status
+                  </p>
+                  <div className={`tag ${getStatusColor(selectedPost.status)}`}>
+                    {getStatusLabel(selectedPost.status)}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p className="text-xs mb-1" style={{ color: 'var(--text3)' }}>
+                    Platform
+                  </p>
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 12px',
+                      backgroundColor: CHANNEL_COLORS[selectedPost.platform as Channel] || 'var(--text3)',
+                      color: 'white',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {CHANNEL_EMOJIS[selectedPost.platform as Channel] || '📱'}
+                    {selectedPost.platform}
+                  </div>
+                </div>
               </div>
 
-              {/* Preview */}
-              <div className={`bg-gradient-to-br ${selectedMedia.gradient} h-64 rounded-lg mb-6 flex items-center justify-center`}>
-                <span className="text-6xl opacity-50">{selectedMedia.type === 'video' ? '🎬' : '🖼️'}</span>
-              </div>
-
-              {/* Social Frame Preview */}
-              <div className="border rounded-lg p-4 mb-6 bg-gray-50">
+              {/* Social Preview */}
+              <div
+                className="border rounded-lg p-4"
+                style={{ backgroundColor: 'var(--bg3)', borderColor: 'var(--border)' }}
+              >
                 <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text2)' }}>
-                  How it will look on {selectedMedia.channel}
+                  Social Media Preview
                 </p>
-                <div className="bg-white border rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-500" />
+                <div
+                  className="rounded-lg p-4"
+                  style={{
+                    backgroundColor: 'var(--bg2)',
+                    border: `1px solid var(--border)`,
+                  }}
+                >
+                  {/* Mock social frame header */}
+                  <div className="flex items-center gap-2 mb-3 pb-3" style={{ borderBottom: `1px solid var(--border)` }}>
+                    <div
+                      className="w-8 h-8 rounded-full"
+                      style={{
+                        background: 'var(--gradient)',
+                      }}
+                    />
                     <div className="text-xs">
-                      <p className="font-semibold">Your Brand</p>
-                      <p style={{ color: 'var(--text2)' }}>@yourbrand</p>
+                      <p style={{ fontWeight: 600, color: 'var(--text)' }}>Your Brand</p>
+                      <p style={{ color: 'var(--text3)' }}>@yourbrand</p>
                     </div>
                   </div>
-                  <div className={`bg-gradient-to-br ${selectedMedia.gradient} h-32 rounded mb-2 flex items-center justify-center`}>
-                    <span className="text-4xl opacity-50">{selectedMedia.type === 'video' ? '▶️' : ''}</span>
-                  </div>
+
+                  {/* Media preview */}
+                  {selectedPost.mediaUrls?.[0]?.startsWith('data:') ? (
+                    selectedPost.mediaUrls[0].startsWith('data:video/') ? (
+                      <div className="h-32 bg-black rounded mb-3 flex items-center justify-center text-3xl">
+                        ▶️
+                      </div>
+                    ) : (
+                      <img
+                        src={selectedPost.mediaUrls[0]}
+                        alt="Post preview"
+                        className="w-full h-32 object-cover rounded mb-3"
+                      />
+                    )
+                  ) : (
+                    <div
+                      className="h-32 rounded mb-3 flex items-center justify-center text-3xl"
+                      style={{
+                        backgroundColor: `hsl(${Math.random() * 360}, 70%, 85%)`,
+                      }}
+                    >
+                      📱
+                    </div>
+                  )}
+
+                  {/* Caption */}
+                  <p style={{ color: 'var(--text)', fontSize: '13px', marginBottom: '12px', lineHeight: 1.5 }}>
+                    {editingCaption}
+                  </p>
+
+                  {/* Hashtags */}
+                  {editingHashtags && (
+                    <p style={{ color: 'var(--accent)', fontSize: '12px', marginBottom: '12px' }}>
+                      {editingHashtags}
+                    </p>
+                  )}
+
+                  {/* Social interactions */}
                   <div className="flex gap-3 text-lg">
                     <span>❤️</span>
                     <span>💬</span>
@@ -395,163 +1026,80 @@ export default function MediaPage() {
                 </div>
               </div>
 
-              {/* Caption Edit Section */}
-              {isEditableStatus(selectedMedia.status) && (
-                <div className="mb-6">
-                  <label className="form-label">Caption</label>
-                  <textarea
-                    value={editingCaption}
-                    onChange={(e) => setEditingCaption(e.target.value)}
-                    rows={4}
-                    className="form-input w-full mb-3"
-                  />
-                  <div className="flex gap-2 mb-3">
+              {/* Edit Mode */}
+              {isEditingPost ? (
+                <div className="space-y-4 border-t pt-6" style={{ borderColor: 'var(--border)' }}>
+                  <h3 className="section-title">Edit Content</h3>
+
+                  <div>
+                    <label className="form-label">Caption</label>
+                    <textarea
+                      value={editingCaption}
+                      onChange={(e) => setEditingCaption(e.target.value)}
+                      rows={4}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Hashtags</label>
+                    <input
+                      type="text"
+                      value={editingHashtags}
+                      onChange={(e) => setEditingHashtags(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
                     <button
-                      onClick={() => handleSaveCaption(selectedMedia.id)}
-                      className="btn btn-primary btn-sm flex-1"
+                      onClick={() => setIsEditingPost(false)}
+                      className="btn btn-secondary flex-1"
                     >
-                      Save Caption
+                      Cancel
                     </button>
                     <button
-                      onClick={() => handleDeletePost(selectedMedia.id)}
-                      className="btn btn-secondary btn-sm"
+                      onClick={handleUpdatePost}
+                      disabled={isSaving}
+                      className="btn btn-primary flex-1"
                     >
-                      <Trash2 size={16} />
+                      {isSaving ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Save Changes'
+                      )}
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="flex gap-3 border-t pt-6" style={{ borderColor: 'var(--border)' }}>
                   <button
-                    onClick={handleSuggestCaptions}
-                    className="btn btn-secondary text-sm"
+                    onClick={() => setIsEditingPost(true)}
+                    className="btn btn-secondary flex-1"
                   >
-                    AI Suggest Captions
+                    Edit
                   </button>
-
-                  {suggestedCaptions.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-sm font-semibold" style={{ color: 'var(--text)' }}>
-                        Suggested variations:
-                      </p>
-                      {suggestedCaptions.map((caption, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => setEditingCaption(caption)}
-                          className="block w-full text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors"
-                          style={{ borderColor: 'var(--border)' }}
-                        >
-                          <p className="text-sm">{caption}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <button
+                    onClick={() => handleDeletePost(selectedPost.id)}
+                    className="btn btn-secondary"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                  <button
+                    onClick={() => setSelectedPost(null)}
+                    className="btn btn-primary flex-1"
+                  >
+                    Close
+                  </button>
                 </div>
               )}
-
-              {/* Close Button */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setSelectedMedia(null)}
-                  className="btn btn-secondary flex-1"
-                >
-                  Close
-                </button>
-              </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Create Post Modal */}
-      {showCreateModal && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowCreateModal(false)}
-        >
-          <div
-            className="card max-w-md w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-6">
-              <h2 className="section-title mb-4">Create New Post</h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="form-label">Title</label>
-                  <input
-                    type="text"
-                    value={newPost.title}
-                    onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-                    className="form-input"
-                    placeholder="Post title"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Caption</label>
-                  <textarea
-                    value={newPost.caption}
-                    onChange={(e) => setNewPost({ ...newPost, caption: e.target.value })}
-                    rows={4}
-                    className="form-input"
-                    placeholder="Post caption"
-                  />
-                </div>
-
-                <div>
-                  <label className="form-label">Channel</label>
-                  <select
-                    value={newPost.channel}
-                    onChange={(e) => setNewPost({ ...newPost, channel: e.target.value as any })}
-                    className="form-input"
-                  >
-                    <option>Instagram</option>
-                    <option>TikTok</option>
-                    <option>Facebook</option>
-                    <option>LinkedIn</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="form-label">Type</label>
-                  <select
-                    value={newPost.type}
-                    onChange={(e) => setNewPost({ ...newPost, type: e.target.value as any })}
-                    className="form-input"
-                  >
-                    <option>image</option>
-                    <option>video</option>
-                    <option>story</option>
-                    <option>reel</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => setShowCreateModal(false)}
-                  className="btn btn-secondary flex-1"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreatePost}
-                  className="btn btn-primary flex-1"
-                >
-                  Create
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create New FAB */}
-      <button
-        onClick={() => setShowCreateModal(true)}
-        className="fixed bottom-8 right-8 btn btn-primary rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
-        title="Create new post"
-      >
-        <Plus size={24} />
-      </button>
     </div>
   );
 }

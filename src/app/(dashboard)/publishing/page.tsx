@@ -22,8 +22,21 @@ interface Post {
   scheduledDate: string;
   scheduledTime: string;
   status: 'queued' | 'scheduled' | 'published' | 'failed';
-  thumbnail: string;
+  thumbnail?: string;
 }
+
+const PLATFORM_COLORS: { [key: string]: string } = {
+  instagram: '#E1306C',
+  tiktok: '#000000',
+  facebook: '#1877F2',
+  linkedin: '#0A66C2',
+  twitter: '#000000',
+  'x (twitter)': '#000000',
+  youtube: '#FF0000',
+  pinterest: '#E60023',
+  email: '#999999',
+  'google business': '#4285F4',
+};
 
 interface Metric {
   label: string;
@@ -150,8 +163,25 @@ export default function PublishingPage() {
     try {
       setLoading(true);
       const res = await fetch('/api/posts');
-      if (res.ok) {
-        setPosts(await res.json());
+
+      if (res.status === 500) {
+        // Database not ready - show empty state
+        setPosts([]);
+        setError(null);
+      } else if (res.ok) {
+        const data = await res.json();
+        // Extract posts from wrapper object and map DB fields to interface
+        const rawPosts = data.posts || [];
+        const mappedPosts = rawPosts.map((post: any) => ({
+          id: post.id,
+          title: post.title || 'Untitled',
+          channel: post.platform || 'Unknown',
+          channelColor: PLATFORM_COLORS[post.platform?.toLowerCase()] || '#000000',
+          scheduledDate: post.scheduledAt ? new Date(post.scheduledAt).toLocaleDateString() : new Date().toLocaleDateString(),
+          scheduledTime: post.scheduledAt ? new Date(post.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00',
+          status: post.status || 'draft',
+        }));
+        setPosts(mappedPosts);
         setError(null);
       } else {
         setError('Failed to fetch posts');
@@ -212,14 +242,19 @@ export default function PublishingPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/posts/${id}`, {
+      const res = await fetch('/api/posts', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
       });
       if (res.ok) {
         setPosts(posts.filter((p) => p.id !== id));
+      } else if (res.status === 500) {
+        setError('Database error. Please try again later.');
       }
     } catch (e) {
       console.error(e);
+      setError('Error deleting post');
     }
   };
 

@@ -349,8 +349,31 @@ export default function CampaignsPage() {
     try {
       setLoading(true);
       const res = await fetch('/api/campaigns');
-      if (res.ok) {
-        setCampaigns(await res.json());
+
+      if (res.status === 500) {
+        // Database not ready - show empty state
+        setCampaigns([]);
+        setError(null);
+      } else if (res.ok) {
+        const data = await res.json();
+        // Extract campaigns from wrapper object and map DB fields to interface
+        const rawCampaigns = data.campaigns || [];
+        const mappedCampaigns = rawCampaigns.map((camp: any) => ({
+          id: camp.id,
+          name: camp.name,
+          status: camp.status || 'draft',
+          startDate: camp.startDate ? new Date(camp.startDate).toLocaleDateString() : '',
+          endDate: camp.endDate ? new Date(camp.endDate).toLocaleDateString() : '',
+          channels: camp.targetChannels || [],
+          budget: camp.budget || 0,
+          spent: 0,
+          impressions: 0,
+          clicks: 0,
+          conversions: 0,
+          roi: 0,
+          progress: camp.status === 'completed' ? 100 : camp.status === 'active' ? 50 : 0,
+        }));
+        setCampaigns(mappedCampaigns);
         setError(null);
       } else {
         setError('Failed to fetch campaigns');
@@ -369,29 +392,51 @@ export default function CampaignsPage() {
 
   const handleCreateCampaign = async (formData: any) => {
     try {
+      // Map form fields to API fields
+      const payload = {
+        name: formData.name,
+        description: formData.description,
+        type: formData.objective,
+        targetChannels: formData.channels,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        budget: parseInt(formData.budget) || 0,
+        status: 'draft',
+      };
+
       const res = await fetch('/api/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) {
+      if (res.status === 500) {
+        setError('Database not available. Please try again later.');
+      } else if (res.ok) {
         await fetchCampaigns();
+      } else {
+        setError('Failed to create campaign');
       }
     } catch (e) {
       console.error(e);
+      setError('Error creating campaign');
     }
   };
 
   const handleDeleteCampaign = async (id: string) => {
     try {
-      const res = await fetch(`/api/campaigns/${id}`, {
+      const res = await fetch('/api/campaigns', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
       });
       if (res.ok) {
         setCampaigns(campaigns.filter((c) => c.id !== id));
+      } else if (res.status === 500) {
+        setError('Database error. Please try again later.');
       }
     } catch (e) {
       console.error(e);
+      setError('Error deleting campaign');
     }
   };
 

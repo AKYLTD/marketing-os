@@ -77,10 +77,50 @@ export default function BrandPage() {
         setLoading(true);
         const response = await fetch('/api/brand');
 
-        if (response.ok) {
+        if (response.status === 500) {
+          // Database not ready - show empty state
+          setState(emptyState);
+          setHasData(false);
+        } else if (response.ok) {
           const data = await response.json();
-          setState(data);
-          setHasData(true);
+          // Extract brand from wrapper object
+          if (data.brand) {
+            // Map API fields back to state structure
+            const mappedState: BrandState = {
+              businessName: data.brand.brandName || '',
+              industry: data.brand.industry || 'Food & Beverage',
+              foundedYear: data.brand.foundedYear || new Date().getFullYear(),
+              location: data.brand.location || '',
+              website: data.brand.websiteUrl || '',
+              maturity: data.brand.maturity || 50,
+              direction: data.brand.direction || 50,
+              ageRanges: data.brand.targetAudience?.ageRanges || [],
+              genderMale: data.brand.targetAudience?.genderMale || 50,
+              incomeLevel: data.brand.targetAudience?.incomeLevel || 'Mid-range',
+              interests: data.brand.targetAudience?.interests || [],
+              interestInput: '',
+              playfulProfessional: data.brand.personality?.playfulProfessional || 0,
+              boldSubtle: data.brand.personality?.boldSubtle || 0,
+              modernClassic: data.brand.personality?.modernClassic || 0,
+              friendlyAuthoritative: data.brand.personality?.friendlyAuthoritative || 0,
+              innovativeTraditional: data.brand.personality?.innovativeTraditional || 0,
+              formality: data.brand.voiceSettings?.formality || 5,
+              humor: data.brand.voiceSettings?.humor || 5,
+              enthusiasm: data.brand.voiceSettings?.enthusiasm || 5,
+              emojiUsage: data.brand.voiceSettings?.emojiUsage || 'Minimal',
+              primaryColor: data.brand.colors?.primary || '#000000',
+              secondaryColor: data.brand.colors?.secondary || '#FFFFFF',
+              accentColor: data.brand.colors?.accent || '#0066cc',
+              brandStory: data.brand.description || '',
+              competitors: data.brand.competitors || [],
+              usp: [],
+            };
+            setState(mappedState);
+            setHasData(true);
+          } else {
+            setState(emptyState);
+            setHasData(false);
+          }
         } else if (response.status === 404) {
           // No brand profile exists yet
           setState(emptyState);
@@ -103,11 +143,51 @@ export default function BrandPage() {
     try {
       setSaving(true);
       setError(null);
+
+      // Map state fields to API fields
+      const payload = {
+        brandName: state.businessName,
+        industry: state.industry,
+        maturity: state.maturity,
+        direction: state.direction,
+        targetAudience: {
+          ageRanges: state.ageRanges,
+          genderMale: state.genderMale,
+          incomeLevel: state.incomeLevel,
+          interests: state.interests,
+        },
+        personality: {
+          playfulProfessional: state.playfulProfessional,
+          boldSubtle: state.boldSubtle,
+          modernClassic: state.modernClassic,
+          friendlyAuthoritative: state.friendlyAuthoritative,
+          innovativeTraditional: state.innovativeTraditional,
+        },
+        voiceSettings: {
+          formality: state.formality,
+          humor: state.humor,
+          enthusiasm: state.enthusiasm,
+          emojiUsage: state.emojiUsage,
+        },
+        colors: {
+          primary: state.primaryColor,
+          secondary: state.secondaryColor,
+          accent: state.accentColor,
+        },
+        description: state.brandStory,
+        competitors: state.competitors,
+        websiteUrl: state.website,
+      };
+
       const response = await fetch('/api/brand', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state),
+        body: JSON.stringify(payload),
       });
+
+      if (response.status === 500) {
+        throw new Error('Database not available. Please try again later.');
+      }
 
       if (!response.ok) {
         throw new Error('Failed to save brand data');
@@ -217,7 +297,7 @@ export default function BrandPage() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {error && (
-          <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }} className="border">
+          <div className="mb-6 p-4 rounded-lg border" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }}>
             {error}
           </div>
         )}
